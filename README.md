@@ -70,10 +70,10 @@ Before configuring the integration, you need to obtain your IOT Token, Station I
 3. Search for "Solar of Things"
 4. Enter your credentials:
    - **IOT Token** (required): Your authentication token
-   - **Device ID** (required): For real-time sensor data
-   - **Station ID** (optional): For monthly summary statistics
+   - **Station ID** (required): Used to auto-discover all devices and enable monthly stats
+   - **Device ID** (optional): If set, Home Assistant will only create entities for that one device
 
-### Multiple Stations
+### Multiple Stations / Multiple Accounts
 
 To add multiple stations:
 1. Add the integration once for each station/device combination
@@ -196,17 +196,18 @@ entities:
 
 ## API Information
 
-This integration uses the Solar of Things API endpoints:
+This integration uses the same Solar of Things endpoints as the reference client [Source](https://github.com/Hyllesen/solar-of-things-solar-usage):
 
-- **Time-Series Data**: `/api/attribute/keys/history/v1`
-- **Monthly Summary**: `/api/stateAttributeSummary/category/yearly`
+- **Station → Device list**: `/apis/device/list`
+- **Time-Series Data**: `/apis/deviceState/simple/attribute/keys/history/v1`
+- **Monthly Summary**: `/apis/stationOverView/stateAttributeSummary/category/yearly`
 
 API documentation: [GitHub - solar-of-things-solar-usage](https://github.com/Hyllesen/solar-of-things-solar-usage)
 
 ## Support
 
 For issues, questions, or feature requests:
-- Open an issue on [GitHub](https://github.com/yourusername/solar-of-things-ha/issues)
+- Open an issue on [GitHub](https://github.com/conexocasa/solar-of-things-ha/issues)
 - Check the [API documentation](https://github.com/Hyllesen/solar-of-things-solar-usage)
 - Visit the Home Assistant community forums
 

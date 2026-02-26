@@ -28,7 +28,7 @@ Get your Solar of Things integration running in 5 minutes!
 ### Option A: HACS (Recommended)
 1. Open HACS → Integrations
 2. Click ⋮ → Custom repositories
-3. Add: `https://github.com/yourusername/solar-of-things-ha`
+3. Add: `https://github.com/conexocasa/solar-of-things-ha`
 4. Install "Solar of Things"
 
 ### Option B: Manual
@@ -44,8 +44,8 @@ Get your Solar of Things integration running in 5 minutes!
 4. Enter your credentials:
    ```
    IOT Token:  [paste your token]
-   Device ID:  [your 18-digit device ID]
-   Station ID: [your 18-digit station ID] (optional)
+   Station ID: [your 18-digit station ID]
+   Device ID:  [optional; leave blank to auto-discover all devices]
    ```
 5. Click **Submit**
 
@@ -90,7 +90,7 @@ See [EXAMPLES.md](EXAMPLES.md) for more advanced cards!
 - 📖 [Full Documentation](README.md)
 - 🛠️ [Installation Guide](INSTALLATION.md)
 - 💡 [Examples](EXAMPLES.md)
-- 🐛 [Report Issue](https://github.com/yourusername/solar-of-things-ha/issues)
+- 🐛 [Report Issue](https://github.com/conexocasa/solar-of-things-ha/issues)
 
 ## Next Steps
 

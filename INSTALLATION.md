@@ -18,7 +18,7 @@
    - Click on "Integrations"
    - Click the three dots (⋮) in the top right corner
    - Select "Custom repositories"
-   - Add repository URL: `https://github.com/yourusername/solar-of-things-ha`
+   - Add repository URL: `https://github.com/conexocasa/solar-of-things-ha`
    - Category: Integration
    - Click "Add"
 
@@ -39,7 +39,7 @@
    ```bash
    # SSH into your Home Assistant instance or use the File Editor add-on
    cd /config/custom_components/
-   git clone https://github.com/yourusername/solar-of-things-ha.git solar_of_things
+   git clone https://github.com/conexocasa/solar-of-things-ha.git solar_of_things
    ```
 
    Or download and extract the ZIP file:
@@ -97,8 +97,9 @@ IOT-Token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 While still in the Network tab:
 
 1. Look for requests to endpoints like:
-   - `/api/attribute/keys/history/v1`
-   - `/api/stateAttributeSummary/category/yearly`
+   - `/apis/device/list`
+   - `/apis/deviceState/simple/attribute/keys/history/v1`
+   - `/apis/stationOverView/stateAttributeSummary/category/yearly`
 
 2. Click on a request and look at the **Payload** or **Request** section
 
@@ -119,9 +120,11 @@ When adding the integration, you'll be prompted for:
 ### Required:
 - **IOT Token**: Your authentication token from the Siseli portal
 
+### Required:
+- **Station ID**: Required (used to auto-discover your device IDs)
+
 ### Optional:
-- **Device ID**: Required for real-time sensor data (highly recommended)
-- **Station ID**: Required for monthly summary statistics
+- **Device ID**: Optional; set it only if you want to restrict Home Assistant entities to a single device under the station
 
 ### Update Interval:
 - Default: 5 minutes

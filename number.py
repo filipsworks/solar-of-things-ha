@@ -2,13 +2,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
-from homeassistant.components.number import (
-    NumberEntity,
-    NumberDeviceClass,
-    NumberMode,
-)
+from homeassistant.components.number import NumberDeviceClass, NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE
 from homeassistant.core import HomeAssistant
@@ -25,47 +20,54 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up Solar of Things number entities based on a config entry."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-    api = hass.data[DOMAIN][entry.entry_id]["api"]
-    
-    entities = [
-        SolarOfThingsBatteryChargeLimitNumber(
-            coordinator=coordinator,
-            entry=entry,
-            api=api,
-        ),
-        SolarOfThingsBatteryDischargeLimitNumber(
-            coordinator=coordinator,
-            entry=entry,
-            api=api,
-        ),
-        SolarOfThingsGridChargeLimitNumber(
-            coordinator=coordinator,
-            entry=entry,
-            api=api,
-        ),
-    ]
-    
+    """Set up number entities (controls) for each device."""
+
+    data = hass.data[DOMAIN][entry.entry_id]
+    api = data["api"]
+    station_id: str = data["station_id"]
+    device_coordinators = data["device_coordinators"]
+
+    entities: list[NumberEntity] = []
+
+    for device_id, coordinator in device_coordinators.items():
+        device_name = (coordinator.device_meta or {}).get("name") or device_id
+        entities.extend(
+            [
+                SolarOfThingsBatteryChargeLimitNumber(api, coordinator, station_id, device_id, device_name),
+                SolarOfThingsBatteryDischargeLimitNumber(api, coordinator, station_id, device_id, device_name),
+                SolarOfThingsGridChargeLimitNumber(api, coordinator, station_id, device_id, device_name),
+            ]
+        )
+
     async_add_entities(entities)
 
 
-class SolarOfThingsBatteryChargeLimitNumber(CoordinatorEntity, NumberEntity):
-    """Number entity for battery charge limit."""
-
-    def __init__(
-        self,
-        coordinator,
-        entry: ConfigEntry,
-        api,
-    ) -> None:
-        """Initialize the number entity."""
+class _BaseNumber(CoordinatorEntity, NumberEntity):
+    def __init__(self, api, coordinator, station_id: str, device_id: str, device_name: str) -> None:
         super().__init__(coordinator)
-        
-        self._entry = entry
         self._api = api
-        self._attr_name = f"{entry.data.get('station_id', entry.data.get('device_id'))} Battery Charge Limit"
-        self._attr_unique_id = f"{entry.entry_id}_battery_charge_limit"
+        self._station_id = station_id
+        self._device_id = device_id
+        self._device_name = device_name
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self._station_id, self._device_id)},
+            "name": self._device_name,
+            "manufacturer": "Siseli",
+            "model": (self.coordinator.data.get("device_meta") or {}).get("model") if self.coordinator.data else None,
+            "via_device": (DOMAIN, self._station_id),
+        }
+
+
+class SolarOfThingsBatteryChargeLimitNumber(_BaseNumber):
+    _setting_key = "batteryChargeLimit"
+
+    def __init__(self, api, coordinator, station_id: str, device_id: str, device_name: str) -> None:
+        super().__init__(api, coordinator, station_id, device_id, device_name)
+        self._attr_name = f"{device_name} Battery Charge Limit"
+        self._attr_unique_id = f"{DOMAIN}_{station_id}_{device_id}_battery_charge_limit"
         self._attr_native_min_value = 0
         self._attr_native_max_value = 100
         self._attr_native_step = 1
@@ -74,52 +76,21 @@ class SolarOfThingsBatteryChargeLimitNumber(CoordinatorEntity, NumberEntity):
         self._attr_icon = "mdi:battery-arrow-up"
 
     @property
-    def device_info(self):
-        """Return device information."""
-        return {
-            "identifiers": {(DOMAIN, self._entry.entry_id)},
-            "name": f"Solar Station {self._entry.data.get('station_id', self._entry.data.get('device_id'))}",
-            "manufacturer": "Siseli",
-            "model": "Solar Inverter",
-        }
-
-    @property
-    def native_value(self) -> float | None:
-        """Return the current value."""
-        if self.coordinator.data and "settings" in self.coordinator.data:
-            return self.coordinator.data["settings"].get("batteryChargeLimit")
-        return None
+    def native_value(self):
+        return ((self.coordinator.data or {}).get("settings") or {}).get(self._setting_key)
 
     async def async_set_native_value(self, value: float) -> None:
-        """Set new value."""
-        try:
-            await self.hass.async_add_executor_job(
-                self._api.set_battery_charge_limit,
-                int(value)
-            )
-            # Request immediate coordinator update
-            await self.coordinator.async_request_refresh()
-        except Exception as err:
-            _LOGGER.error("Error setting battery charge limit: %s", err)
-            raise
+        await self.hass.async_add_executor_job(self._api.set_battery_charge_limit, self._device_id, int(value))
+        await self.coordinator.async_request_refresh()
 
 
-class SolarOfThingsBatteryDischargeLimitNumber(CoordinatorEntity, NumberEntity):
-    """Number entity for battery discharge limit."""
+class SolarOfThingsBatteryDischargeLimitNumber(_BaseNumber):
+    _setting_key = "batteryDischargeLimit"
 
-    def __init__(
-        self,
-        coordinator,
-        entry: ConfigEntry,
-        api,
-    ) -> None:
-        """Initialize the number entity."""
-        super().__init__(coordinator)
-        
-        self._entry = entry
-        self._api = api
-        self._attr_name = f"{entry.data.get('station_id', entry.data.get('device_id'))} Battery Discharge Limit"
-        self._attr_unique_id = f"{entry.entry_id}_battery_discharge_limit"
+    def __init__(self, api, coordinator, station_id: str, device_id: str, device_name: str) -> None:
+        super().__init__(api, coordinator, station_id, device_id, device_name)
+        self._attr_name = f"{device_name} Battery Discharge Limit"
+        self._attr_unique_id = f"{DOMAIN}_{station_id}_{device_id}_battery_discharge_limit"
         self._attr_native_min_value = 0
         self._attr_native_max_value = 100
         self._attr_native_step = 1
@@ -128,52 +99,21 @@ class SolarOfThingsBatteryDischargeLimitNumber(CoordinatorEntity, NumberEntity):
         self._attr_icon = "mdi:battery-arrow-down"
 
     @property
-    def device_info(self):
-        """Return device information."""
-        return {
-            "identifiers": {(DOMAIN, self._entry.entry_id)},
-            "name": f"Solar Station {self._entry.data.get('station_id', self._entry.data.get('device_id'))}",
-            "manufacturer": "Siseli",
-            "model": "Solar Inverter",
-        }
-
-    @property
-    def native_value(self) -> float | None:
-        """Return the current value."""
-        if self.coordinator.data and "settings" in self.coordinator.data:
-            return self.coordinator.data["settings"].get("batteryDischargeLimit")
-        return None
+    def native_value(self):
+        return ((self.coordinator.data or {}).get("settings") or {}).get(self._setting_key)
 
     async def async_set_native_value(self, value: float) -> None:
-        """Set new value."""
-        try:
-            await self.hass.async_add_executor_job(
-                self._api.set_battery_discharge_limit,
-                int(value)
-            )
-            # Request immediate coordinator update
-            await self.coordinator.async_request_refresh()
-        except Exception as err:
-            _LOGGER.error("Error setting battery discharge limit: %s", err)
-            raise
+        await self.hass.async_add_executor_job(self._api.set_battery_discharge_limit, self._device_id, int(value))
+        await self.coordinator.async_request_refresh()
 
 
-class SolarOfThingsGridChargeLimitNumber(CoordinatorEntity, NumberEntity):
-    """Number entity for grid charge limit."""
+class SolarOfThingsGridChargeLimitNumber(_BaseNumber):
+    _setting_key = "gridChargeLimit"
 
-    def __init__(
-        self,
-        coordinator,
-        entry: ConfigEntry,
-        api,
-    ) -> None:
-        """Initialize the number entity."""
-        super().__init__(coordinator)
-        
-        self._entry = entry
-        self._api = api
-        self._attr_name = f"{entry.data.get('station_id', entry.data.get('device_id'))} Grid Charge Limit"
-        self._attr_unique_id = f"{entry.entry_id}_grid_charge_limit"
+    def __init__(self, api, coordinator, station_id: str, device_id: str, device_name: str) -> None:
+        super().__init__(api, coordinator, station_id, device_id, device_name)
+        self._attr_name = f"{device_name} Grid Charge Limit"
+        self._attr_unique_id = f"{DOMAIN}_{station_id}_{device_id}_grid_charge_limit"
         self._attr_native_min_value = 0
         self._attr_native_max_value = 5000
         self._attr_native_step = 100
@@ -183,31 +123,9 @@ class SolarOfThingsGridChargeLimitNumber(CoordinatorEntity, NumberEntity):
         self._attr_icon = "mdi:transmission-tower-import"
 
     @property
-    def device_info(self):
-        """Return device information."""
-        return {
-            "identifiers": {(DOMAIN, self._entry.entry_id)},
-            "name": f"Solar Station {self._entry.data.get('station_id', self._entry.data.get('device_id'))}",
-            "manufacturer": "Siseli",
-            "model": "Solar Inverter",
-        }
-
-    @property
-    def native_value(self) -> float | None:
-        """Return the current value."""
-        if self.coordinator.data and "settings" in self.coordinator.data:
-            return self.coordinator.data["settings"].get("gridChargeLimit")
-        return None
+    def native_value(self):
+        return ((self.coordinator.data or {}).get("settings") or {}).get(self._setting_key)
 
     async def async_set_native_value(self, value: float) -> None:
-        """Set new value."""
-        try:
-            await self.hass.async_add_executor_job(
-                self._api.set_grid_charge_limit,
-                int(value)
-            )
-            # Request immediate coordinator update
-            await self.coordinator.async_request_refresh()
-        except Exception as err:
-            _LOGGER.error("Error setting grid charge limit: %s", err)
-            raise
+        await self.hass.async_add_executor_job(self._api.set_grid_charge_limit, self._device_id, int(value))
+        await self.coordinator.async_request_refresh()

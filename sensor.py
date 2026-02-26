@@ -1,21 +1,16 @@
 """Sensor platform for Solar of Things integration."""
 from __future__ import annotations
 
-from datetime import datetime
 import logging
 
-from homeassistant.components.sensor import (
-    SensorEntity,
-    SensorDeviceClass,
-    SensorStateClass,
-)
+from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
-    UnitOfPower,
-    UnitOfEnergy,
+    PERCENTAGE,
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
-    PERCENTAGE,
+    UnitOfEnergy,
+    UnitOfPower,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -31,63 +26,76 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up Solar of Things sensor based on a config entry."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-    
-    entities = []
-    
-    # Create time-series sensors
-    for key, definition in SENSOR_DEFINITIONS.items():
-        if not key.startswith("monthly_"):
+    """Set up Solar of Things sensors."""
+
+    data = hass.data[DOMAIN][entry.entry_id]
+    station_id: str = data["station_id"]
+    device_coordinators = data["device_coordinators"]
+    station_coordinator = data["station_coordinator"]
+
+    entities: list[SensorEntity] = []
+
+    # Per-device sensors
+    for device_id, coordinator in device_coordinators.items():
+        device_name = (coordinator.device_meta or {}).get("name") or device_id
+
+        for key, definition in SENSOR_DEFINITIONS.items():
+            if key.startswith("monthly_"):
+                continue
+
             entities.append(
-                SolarOfThingsSensor(
+                SolarOfThingsDeviceSensor(
                     coordinator=coordinator,
-                    entry=entry,
+                    station_id=station_id,
+                    device_id=device_id,
+                    device_name=device_name,
                     sensor_key=key,
                     sensor_definition=definition,
                 )
             )
-    
-    # Create monthly sensors if station_id is available
-    if entry.data.get("station_id"):
+
+    # Station-level monthly sensors
+    if station_coordinator:
         for key, definition in SENSOR_DEFINITIONS.items():
-            if key.startswith("monthly_"):
-                entities.append(
-                    SolarOfThingsMonthlySensor(
-                        coordinator=coordinator,
-                        entry=entry,
-                        sensor_key=key,
-                        sensor_definition=definition,
-                    )
+            if not key.startswith("monthly_"):
+                continue
+
+            entities.append(
+                SolarOfThingsStationMonthlySensor(
+                    coordinator=station_coordinator,
+                    station_id=station_id,
+                    sensor_key=key,
+                    sensor_definition=definition,
                 )
-    
+            )
+
     async_add_entities(entities)
 
 
-class SolarOfThingsSensor(CoordinatorEntity, SensorEntity):
-    """Representation of a Solar of Things Sensor."""
+class SolarOfThingsDeviceSensor(CoordinatorEntity, SensorEntity):
+    """Per-device telemetry sensor."""
 
     def __init__(
         self,
         coordinator,
-        entry: ConfigEntry,
+        station_id: str,
+        device_id: str,
+        device_name: str,
         sensor_key: str,
         sensor_definition: dict,
     ) -> None:
-        """Initialize the sensor."""
         super().__init__(coordinator)
-        
-        self._entry = entry
+
+        self._station_id = station_id
+        self._device_id = device_id
+        self._device_name = device_name
         self._sensor_key = sensor_key
         self._sensor_definition = sensor_definition
-        
-        # Entity attributes
-        self._attr_name = f"{entry.data.get('station_id', entry.data.get('device_id'))} {sensor_definition['name']}"
-        self._attr_unique_id = f"{entry.entry_id}_{sensor_key}"
-        self._attr_native_unit_of_measurement = sensor_definition.get("unit")
+
+        self._attr_name = f"{device_name} {sensor_definition['name']}"
+        self._attr_unique_id = f"{DOMAIN}_{station_id}_{device_id}_{sensor_key}"
         self._attr_icon = sensor_definition.get("icon")
-        
-        # Set device class based on unit
+
         unit = sensor_definition.get("unit")
         if unit == "W":
             self._attr_device_class = SensorDeviceClass.POWER
@@ -113,56 +121,46 @@ class SolarOfThingsSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def device_info(self):
-        """Return device information."""
         return {
-            "identifiers": {(DOMAIN, self._entry.entry_id)},
-            "name": f"Solar Station {self._entry.data.get('station_id', self._entry.data.get('device_id'))}",
+            "identifiers": {(DOMAIN, self._station_id, self._device_id)},
+            "name": self._device_name,
             "manufacturer": "Siseli",
-            "model": "Solar Inverter",
+            "model": (self.coordinator.data.get("device_meta") or {}).get("model") if self.coordinator.data else None,
+            "via_device": (DOMAIN, self._station_id),
         }
 
     @property
     def native_value(self):
-        """Return the state of the sensor."""
-        if self.coordinator.data and "time_series" in self.coordinator.data:
-            value = self.coordinator.data["time_series"].get(self._sensor_key)
-            if value is not None:
-                try:
-                    return round(float(value), 2)
-                except (ValueError, TypeError):
-                    return None
-        return None
-
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        return self.coordinator.last_update_success and self.native_value is not None
+        ts = (self.coordinator.data or {}).get("time_series") or {}
+        val = ts.get(self._sensor_key)
+        if val is None:
+            return None
+        try:
+            return round(float(val), 2)
+        except Exception:
+            return None
 
 
-class SolarOfThingsMonthlySensor(CoordinatorEntity, SensorEntity):
-    """Representation of a Solar of Things Monthly Sensor."""
+class SolarOfThingsStationMonthlySensor(CoordinatorEntity, SensorEntity):
+    """Station-level monthly summary sensor."""
 
     def __init__(
         self,
         coordinator,
-        entry: ConfigEntry,
+        station_id: str,
         sensor_key: str,
         sensor_definition: dict,
     ) -> None:
-        """Initialize the sensor."""
         super().__init__(coordinator)
-        
-        self._entry = entry
+
+        self._station_id = station_id
         self._sensor_key = sensor_key
         self._sensor_definition = sensor_definition
-        
-        # Entity attributes
-        self._attr_name = f"{entry.data.get('station_id')} {sensor_definition['name']}"
-        self._attr_unique_id = f"{entry.entry_id}_{sensor_key}"
-        self._attr_native_unit_of_measurement = sensor_definition.get("unit")
+
+        self._attr_name = f"Station {station_id} {sensor_definition['name']}"
+        self._attr_unique_id = f"{DOMAIN}_{station_id}_{sensor_key}"
         self._attr_icon = sensor_definition.get("icon")
-        
-        # Set device class
+
         unit = sensor_definition.get("unit")
         if unit == "kWh":
             self._attr_device_class = SensorDeviceClass.ENERGY
@@ -174,27 +172,20 @@ class SolarOfThingsMonthlySensor(CoordinatorEntity, SensorEntity):
 
     @property
     def device_info(self):
-        """Return device information."""
         return {
-            "identifiers": {(DOMAIN, self._entry.entry_id)},
-            "name": f"Solar Station {self._entry.data.get('station_id')}",
+            "identifiers": {(DOMAIN, self._station_id)},
+            "name": f"Solar Station {self._station_id}",
             "manufacturer": "Siseli",
-            "model": "Solar Inverter",
+            "model": "Station",
         }
 
     @property
     def native_value(self):
-        """Return the state of the sensor."""
-        if self.coordinator.data and "monthly" in self.coordinator.data:
-            value = self.coordinator.data["monthly"].get(self._sensor_key)
-            if value is not None:
-                try:
-                    return round(float(value), 2)
-                except (ValueError, TypeError):
-                    return None
-        return None
-
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        return self.coordinator.last_update_success
+        monthly = (self.coordinator.data or {}).get("monthly") or {}
+        val = monthly.get(self._sensor_key)
+        if val is None:
+            return None
+        try:
+            return round(float(val), 2)
+        except Exception:
+            return None

@@ -6,8 +6,9 @@
         "description": "Configure your Solar of Things station. You can add multiple stations by configuring this integration multiple times.\n\nTo find your credentials:\n1. Log into https://solar.siseli.com\n2. Open browser developer tools (F12) → Network tab\n3. Refresh the page and look at API requests\n4. Copy the IOT-Token from request headers\n5. Find stationId and deviceId in the request URLs or payloads\n\nMore info: {docs_url}",
         "data": {
           "iot_token": "IOT Token",
-          "station_id": "Station ID (optional, for monthly stats)",
-          "device_id": "Device ID (required for real-time data)"
+          "station_id": "Station ID (required)",
+          "device_id": "Device ID (optional; leave blank to auto-discover all devices)",
+          "time_zone": "Time zone (IOT-Time-Zone header)"
         }
       },
       "add_another": {

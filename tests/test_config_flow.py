@@ -28,7 +28,7 @@ async def test_form_cannot_connect(hass: HomeAssistant) -> None:
             context={"source": config_entries.SOURCE_USER},
             data={
                 "iot_token": "test_token",
-                "device_id": "123456789012345678",
+                "station_id": "876543210987654321",
             },
         )
 
@@ -47,8 +47,9 @@ async def test_form_success(hass: HomeAssistant) -> None:
             context={"source": config_entries.SOURCE_USER},
             data={
                 "iot_token": "test_token",
-                "device_id": "123456789012345678",
                 "station_id": "876543210987654321",
+                "device_id": "123456789012345678",
+                "time_zone": "Asia/Manila",
             },
         )
 
@@ -56,6 +57,7 @@ async def test_form_success(hass: HomeAssistant) -> None:
     assert result["title"] == "Solar Station 876543210987654321"
     assert result["data"] == {
         "iot_token": "test_token",
-        "device_id": "123456789012345678",
         "station_id": "876543210987654321",
+        "device_id": "123456789012345678",
+        "time_zone": "Asia/Manila",
     }

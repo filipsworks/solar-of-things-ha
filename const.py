@@ -6,13 +6,19 @@ DOMAIN = "solar_of_things"
 CONF_IOT_TOKEN = "iot_token"
 CONF_STATION_ID = "station_id"
 CONF_DEVICE_ID = "device_id"
+CONF_TIME_ZONE = "time_zone"
 
 # API endpoints
 API_BASE_URL = "https://solar.siseli.com"
-API_TIME_SERIES = "/api/attribute/keys/history/v1"
-API_MONTHLY_SUMMARY = "/api/stateAttributeSummary/category/yearly"
+# Endpoints based on the working reference client
+# https://github.com/Hyllesen/solar-of-things-solar-usage
+API_TIME_SERIES = "/apis/deviceState/simple/attribute/keys/history/v1"
+API_MONTHLY_SUMMARY = "/apis/stationOverView/stateAttributeSummary/category/yearly"
 API_SETTINGS_GET = "/api/device/settings/v1"
 API_SETTINGS_SET = "/api/device/settings/update/v1"
+
+# Station -> devices
+API_DEVICE_LIST = "/apis/device/list"
 
 # Sensor keys
 SENSOR_KEYS = [
