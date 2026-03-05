@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-03-05
+
+### Added
+- `.github/PULL_REQUEST_TEMPLATE.md` — standardised PR template for HACS default submission.
+
+### Changed
+- `hacs.json` updated: added all integration platforms (`sensor`, `number`, `select`, `switch`), enabled `zip_release: true`, and set `filename: solar-of-things-ha.zip` so HACS fetches the correct release asset.
+- `manifest.json` version bumped to 2.1.1.
+
 ## [2.1.0] - 2026-02-26
 
 ### Added
