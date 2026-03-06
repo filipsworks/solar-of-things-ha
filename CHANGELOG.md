@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-03-06
+
+### Added
+- **Email + Password authentication** (recommended) — the integration now logs in with Siseli portal credentials (`email`, `password`) and handles the full token lifecycle automatically. Users no longer need to copy IOT tokens from DevTools.
+- **Automatic token refresh** — `SolarOfThingsAPI._ensure_token_valid()` proactively refreshes the access token 5 minutes before expiry using `POST /login/refresh/access/token` (mirroring the portal JS behaviour). Falls back to re-login with stored credentials if the refresh token has also expired.
+- **HA re-auth flow** — if all refresh strategies fail, coordinators call `entry.async_start_reauth()` so HA displays a notification and the user is guided through re-authentication without losing their config.
+- **`on_token_refreshed` callback** — fresh tokens are persisted back to the config entry after every refresh, so the integration survives HA restarts without a new login.
+- **Legacy IOT-token mode preserved** — users who prefer not to store credentials can still paste a token manually; re-auth is triggered when it expires.
+- New `const.py` keys: `CONF_EMAIL`, `CONF_PASSWORD`, `CONF_REFRESH_TOKEN`, `CONF_ACCESS_TOKEN_EXPIRES`, `CONF_REFRESH_TOKEN_EXPIRES`, `API_LOGIN`, `API_REFRESH_TOKEN`, `TOKEN_REFRESH_LEAD_SECONDS`.
+- New config-flow steps: `password`, `token`, `reauth_confirm` (step `user` now offers a mode selector).
+- `TokenExpiredError` and `AuthenticationError` custom exceptions in `api.py`.
+
+### Changed
+- `SolarOfThingsAPI.__init__` signature updated: keyword-only arguments (`email`, `password`, `iot_token`, `refresh_token`, etc.).
+- `__init__.py` coordinators now catch `TokenExpiredError` and trigger re-auth instead of silently failing.
+- `strings.json` / `translations/en.json` updated for new flow steps and error messages.
+- `manifest.json` version bumped to **2.2.0** (`config_flow` version bumped to **3**).
+
+### Known issues
+- The `loginType` field value and exact shape of the `/login/account` response are inferred from portal JS analysis; tested against live API but may need adjustment for non-email login types.
+
+
+## [2.2.0] - 2026-03-06
+
+### Added
+- **Email + Password authentication** (recommended) — logs in automatically; no manual token copying needed.
+- **Automatic token refresh** — proactively refreshes access token 5 min before expiry via `POST /login/refresh/access/token`; falls back to re-login with stored credentials.
+- **HA re-auth flow** — on total token failure, coordinators call `entry.async_start_reauth()` to prompt user without losing config.
+- **`on_token_refreshed` callback** — fresh tokens persisted to config entry after every refresh (survives HA restarts).
+- **Legacy IOT-token mode preserved** — paste-a-token still works; re-auth triggered on expiry.
+- New constants: `CONF_EMAIL`, `CONF_PASSWORD`, `CONF_REFRESH_TOKEN`, `CONF_ACCESS_TOKEN_EXPIRES`, `CONF_REFRESH_TOKEN_EXPIRES`, `API_LOGIN`, `API_REFRESH_TOKEN`, `TOKEN_REFRESH_LEAD_SECONDS`.
+- New config-flow steps: `password`, `token`, `reauth_confirm`; step `user` is now a mode selector.
+- `TokenExpiredError` and `AuthenticationError` custom exceptions in `api.py`.
+
+### Changed
+- `SolarOfThingsAPI.__init__` uses keyword-only arguments.
+- Coordinators catch `TokenExpiredError` and trigger re-auth.
+- `strings.json`/`translations/en.json` updated for new flow steps.
+- `manifest.json` version **2.2.0**, config flow `VERSION = 3`.
+
 ## [2.1.1] - 2026-03-05
 
 ### Added

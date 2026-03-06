@@ -2,25 +2,41 @@
 
 DOMAIN = "solar_of_things"
 
-# Configuration keys
-CONF_IOT_TOKEN = "iot_token"
+# ─── Configuration keys ────────────────────────────────────────────────────────
+CONF_IOT_TOKEN = "iot_token"          # legacy / advanced manual entry
 CONF_STATION_ID = "station_id"
 CONF_DEVICE_ID = "device_id"
 CONF_TIME_ZONE = "time_zone"
 
-# API endpoints
+# Credential-based auth (preferred)
+CONF_EMAIL = "email"
+CONF_PASSWORD = "password"
+
+# Runtime-stored token state (written back to config entry)
+CONF_REFRESH_TOKEN = "refresh_token"
+CONF_ACCESS_TOKEN_EXPIRES = "access_token_expires"   # ISO-8601 string
+CONF_REFRESH_TOKEN_EXPIRES = "refresh_token_expires" # ISO-8601 string
+
+# ─── API base ──────────────────────────────────────────────────────────────────
 API_BASE_URL = "https://solar.siseli.com"
-# Endpoints based on the working reference client
-# https://github.com/Hyllesen/solar-of-things-solar-usage
-API_TIME_SERIES = "/apis/deviceState/simple/attribute/keys/history/v1"
+
+# ─── Auth endpoints (discovered from portal JS bundle) ─────────────────────────
+API_LOGIN           = "/login/account"                   # POST, no token needed
+API_REFRESH_TOKEN   = "/login/refresh/access/token"      # POST, no token needed
+
+# ─── Data endpoints ────────────────────────────────────────────────────────────
+API_TIME_SERIES    = "/apis/deviceState/simple/attribute/keys/history/v1"
 API_MONTHLY_SUMMARY = "/apis/stationOverView/stateAttributeSummary/category/yearly"
-API_SETTINGS_GET = "/api/device/settings/v1"
-API_SETTINGS_SET = "/api/device/settings/update/v1"
+API_SETTINGS_GET   = "/api/device/settings/v1"
+API_SETTINGS_SET   = "/api/device/settings/update/v1"
+API_DEVICE_LIST    = "/apis/device/list"
 
-# Station -> devices
-API_DEVICE_LIST = "/apis/device/list"
+# ─── Token refresh window ──────────────────────────────────────────────────────
+# Refresh the access token this many seconds *before* its stated expiry.
+# Mirrors the portal JS which refreshes when ≤300 s remain.
+TOKEN_REFRESH_LEAD_SECONDS = 300  # 5 minutes
 
-# Sensor keys
+# ─── Sensor keys ───────────────────────────────────────────────────────────────
 SENSOR_KEYS = [
     "pvInputPower",
     "acOutputActivePower",
@@ -34,7 +50,6 @@ SENSOR_KEYS = [
     "loadPower",
 ]
 
-# Sensor names and units
 SENSOR_DEFINITIONS = {
     "pvInputPower": {
         "name": "PV Input Power",

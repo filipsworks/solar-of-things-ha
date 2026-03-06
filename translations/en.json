@@ -3,28 +3,49 @@
     "step": {
       "user": {
         "title": "Add Solar of Things Station",
-        "description": "Configure your Solar of Things station. You can add multiple stations by configuring this integration multiple times.\n\nTo find your credentials:\n1. Log into https://solar.siseli.com\n2. Open browser developer tools (F12) → Network tab\n3. Refresh the page and look at API requests\n4. Copy the IOT-Token from request headers\n5. Find stationId and deviceId in the request URLs or payloads\n\nMore info: {docs_url}",
+        "description": "Choose how to authenticate with the Siseli portal.\n\n**Email + Password** is recommended — the integration logs in automatically and refreshes the token without any manual steps.\n\n**IOT Token** is for advanced use or if you prefer not to store credentials.\n\nMore info: {docs_url}",
+        "data": {
+          "auth_mode": "Authentication method"
+        }
+      },
+      "password": {
+        "title": "Solar of Things — Email + Password",
+        "description": "Enter your Siseli portal credentials and Station ID.\n\n- **Station ID**: 18-digit number found in API request payloads at https://solar.siseli.com (DevTools → Network)\n- **Device ID**: optional — leave blank to auto-discover all devices under the station\n- **Time zone**: must match your inverter's configured time zone\n\nMore info: {docs_url}",
+        "data": {
+          "email": "Email address",
+          "password": "Password",
+          "station_id": "Station ID (required)",
+          "device_id": "Device ID (optional — blank to auto-discover)",
+          "time_zone": "Time zone (e.g. Asia/Manila)"
+        }
+      },
+      "token": {
+        "title": "Solar of Things — IOT Token",
+        "description": "Enter an IOT-Token from https://solar.siseli.com (DevTools → Network → request headers).\n\nNote: tokens expire. When expired you will be prompted to enter a new one.\n\nMore info: {docs_url}",
         "data": {
           "iot_token": "IOT Token",
           "station_id": "Station ID (required)",
-          "device_id": "Device ID (optional; leave blank to auto-discover all devices)",
-          "time_zone": "Time zone (IOT-Time-Zone header)"
+          "device_id": "Device ID (optional — blank to auto-discover)",
+          "time_zone": "Time zone (e.g. Asia/Manila)"
         }
       },
-      "add_another": {
-        "title": "Add Another Station?",
-        "description": "You have added {station_count} station(s). Would you like to add another?",
+      "reauth_confirm": {
+        "title": "Re-authenticate Solar of Things",
+        "description": "The access token has expired. Enter your updated password (or a fresh IOT Token) to continue.",
         "data": {
-          "add_another": "Add another station"
+          "password": "Password",
+          "iot_token": "Fresh IOT Token"
         }
       }
     },
     "error": {
-      "cannot_connect": "Failed to connect to Solar of Things API. Please check your IOT Token and IDs.",
-      "unknown": "Unexpected error occurred. Please check the logs."
+      "cannot_connect": "Cannot connect to the Solar of Things API. Check credentials, Station ID, and network access.",
+      "invalid_auth": "Invalid email or password. Please try again.",
+      "unknown": "Unexpected error. Check Home Assistant logs for details."
     },
     "abort": {
-      "already_configured": "This station is already configured."
+      "already_configured": "This station is already configured.",
+      "reauth_successful": "Re-authentication successful."
     }
   },
   "options": {
@@ -39,15 +60,9 @@
   },
   "entity": {
     "number": {
-      "battery_charge_limit": {
-        "name": "Battery Charge Limit"
-      },
-      "battery_discharge_limit": {
-        "name": "Battery Discharge Limit"
-      },
-      "grid_charge_limit": {
-        "name": "Grid Charge Limit"
-      }
+      "battery_charge_limit": { "name": "Battery Charge Limit" },
+      "battery_discharge_limit": { "name": "Battery Discharge Limit" },
+      "grid_charge_limit": { "name": "Grid Charge Limit" }
     },
     "select": {
       "operating_mode": {
@@ -70,15 +85,9 @@
       }
     },
     "switch": {
-      "grid_charging": {
-        "name": "Grid Charging"
-      },
-      "grid_feed_in": {
-        "name": "Grid Feed-In"
-      },
-      "backup_mode": {
-        "name": "Backup Mode"
-      }
+      "grid_charging": { "name": "Grid Charging" },
+      "grid_feed_in": { "name": "Grid Feed-In" },
+      "backup_mode": { "name": "Backup Mode" }
     }
   }
 }
