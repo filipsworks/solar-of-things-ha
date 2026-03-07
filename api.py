@@ -719,6 +719,9 @@ class SolarOfThingsAPI:
             )
         return data.get("data") or {}
 
+    # Alias used by the coordinator in __init__.py
+    fetch_settings = get_device_settings
+
     def update_device_settings(self, device_id: str, settings: dict[str, Any]) -> None:
         """Update one or more device settings."""
         payload = {"deviceId": device_id, **settings}
@@ -729,7 +732,27 @@ class SolarOfThingsAPI:
                 f"message={data.get('message')}"
             )
 
-    # ─── Connection test ───────────────────────────────────────────────────────
+    # ─── Convenience control helpers (called by select.py / switch.py) ─────────
+
+    def set_operating_mode(self, device_id: str, mode: str) -> None:
+        """Set the inverter operating mode (e.g. 'Self-Use', 'Backup')."""
+        self.update_device_settings(device_id, {"operatingMode": mode})
+
+    def set_battery_priority(self, device_id: str, mode: str) -> None:
+        """Set battery charging priority (e.g. 'Solar First', 'Grid First')."""
+        self.update_device_settings(device_id, {"batteryPriority": mode})
+
+    def set_grid_charging(self, device_id: str, enabled: bool) -> None:
+        """Enable or disable grid charging."""
+        self.update_device_settings(device_id, {"gridChargingEnabled": enabled})
+
+    def set_grid_feed_in(self, device_id: str, enabled: bool) -> None:
+        """Enable or disable grid feed-in (export)."""
+        self.update_device_settings(device_id, {"gridFeedInEnabled": enabled})
+
+    def set_backup_mode(self, device_id: str, enabled: bool) -> None:
+        """Enable or disable backup (reserve) mode."""
+        self.update_device_settings(device_id, {"backupModeEnabled": enabled})
 
     def test_connection(self, station_id: str) -> bool:
         """Return True if we can reach the device-list endpoint successfully."""

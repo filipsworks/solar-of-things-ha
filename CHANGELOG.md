@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.2] - 2026-03-07
+
+### Fixed
+- **`fetch_settings` AttributeError** -- `__init__.py` called `api.fetch_settings()`
+  but `api.py` only exposed `get_device_settings()`. Added `fetch_settings` as a
+  class-level alias so both names work.
+- **Missing control helper methods** -- `select.py` and `switch.py` called five
+  methods that did not exist on `SolarOfThingsAPI`:
+  `set_operating_mode`, `set_battery_priority`, `set_grid_charging`,
+  `set_grid_feed_in`, `set_backup_mode`. All five are now implemented as thin
+  wrappers over `update_device_settings`.
+
 ## [2.3.1] - 2026-03-07
 
 ### Fixed
