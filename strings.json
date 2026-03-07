@@ -3,20 +3,20 @@
     "step": {
       "user": {
         "title": "Add Solar of Things Station",
-        "description": "Choose how to authenticate with the Siseli portal.\n\n**Email + Password** is recommended — the integration logs in automatically and refreshes the token without any manual steps.\n\n**IOT Token** is for advanced use or if you prefer not to store credentials.\n\nMore info: {docs_url}",
+        "description": "Choose how to authenticate with the Siseli portal.\n\n**User ID + Password** is recommended — the integration logs in automatically and refreshes the token without any manual steps.\n\n**IOT Token** is for advanced use or if you prefer not to store credentials.\n\nMore info: {docs_url}",
         "data": {
           "auth_mode": "Authentication method"
         }
       },
       "password": {
-        "title": "Solar of Things — Email + Password",
-        "description": "Enter your Siseli portal credentials and Station ID.\n\n- **Station ID**: 18-digit number found in API request payloads at https://solar.siseli.com (DevTools → Network)\n- **Device ID**: optional — leave blank to auto-discover all devices under the station\n- **Time zone**: must match your inverter's configured time zone\n\nMore info: {docs_url}",
+        "title": "Solar of Things — User ID + Password",
+        "description": "Enter your Siseli portal login credentials and Station ID.\n\n- **User ID**: your account/login name on https://solar.siseli.com\n- **Station ID**: 18-digit number found in API request payloads (DevTools → Network)\n- **Device ID**: optional — leave blank to auto-discover all devices under the station\n- **Time zone**: must match your inverter's configured time zone\n\nMore info: {docs_url}",
         "data": {
-          "email": "Email address",
           "password": "Password",
           "station_id": "Station ID (required)",
           "device_id": "Device ID (optional — blank to auto-discover)",
-          "time_zone": "Time zone (e.g. Asia/Manila)"
+          "time_zone": "Time zone (e.g. Asia/Manila)",
+          "user_id": "User ID / Account"
         }
       },
       "token": {
@@ -40,7 +40,7 @@
     },
     "error": {
       "cannot_connect": "Cannot connect to the Solar of Things API. Check credentials, Station ID, and network access.",
-      "invalid_auth": "Invalid email or password. Please try again.",
+      "invalid_auth": "Invalid user ID or password. Please try again.",
       "unknown": "Unexpected error. Check Home Assistant logs for details."
     },
     "abort": {
@@ -60,9 +60,15 @@
   },
   "entity": {
     "number": {
-      "battery_charge_limit": { "name": "Battery Charge Limit" },
-      "battery_discharge_limit": { "name": "Battery Discharge Limit" },
-      "grid_charge_limit": { "name": "Grid Charge Limit" }
+      "battery_charge_limit": {
+        "name": "Battery Charge Limit"
+      },
+      "battery_discharge_limit": {
+        "name": "Battery Discharge Limit"
+      },
+      "grid_charge_limit": {
+        "name": "Grid Charge Limit"
+      }
     },
     "select": {
       "operating_mode": {
@@ -85,9 +91,15 @@
       }
     },
     "switch": {
-      "grid_charging": { "name": "Grid Charging" },
-      "grid_feed_in": { "name": "Grid Feed-In" },
-      "backup_mode": { "name": "Backup Mode" }
+      "grid_charging": {
+        "name": "Grid Charging"
+      },
+      "grid_feed_in": {
+        "name": "Grid Feed-In"
+      },
+      "backup_mode": {
+        "name": "Backup Mode"
+      }
     }
   }
 }

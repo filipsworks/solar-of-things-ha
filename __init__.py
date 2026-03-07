@@ -20,7 +20,7 @@ The integration supports two modes:
 
 Version history
 ────────────────
-  v2.2.0 – email/password auth + automatic token refresh
+  v2.3.0 – user-id/password auth (replacing email), working IOT-Open signing
 """
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .api import SolarOfThingsAPI, TokenExpiredError
 from .const import (
     DOMAIN,
-    CONF_EMAIL,
+    CONF_USER_ID,
     CONF_PASSWORD,
     CONF_IOT_TOKEN,
     CONF_STATION_ID,
@@ -64,7 +64,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
 
     time_zone = entry.data.get(CONF_TIME_ZONE) or entry.options.get(CONF_TIME_ZONE)
-    email = entry.data.get(CONF_EMAIL)
+    user_id = entry.data.get(CONF_USER_ID)
     password = entry.data.get(CONF_PASSWORD)
 
     # Build the token-refreshed callback *before* constructing the API so the
@@ -93,9 +93,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
 
     # Instantiate API in the appropriate auth mode
-    if email and password:
+    if user_id and password:
         api = SolarOfThingsAPI(
-            email=email,
+            user_id=user_id,
             password=password,
             iot_token=entry.data.get(CONF_IOT_TOKEN),          # cached token (avoids login on every restart)
             refresh_token=entry.data.get(CONF_REFRESH_TOKEN),

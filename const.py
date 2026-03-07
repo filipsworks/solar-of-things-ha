@@ -9,7 +9,7 @@ CONF_DEVICE_ID = "device_id"
 CONF_TIME_ZONE = "time_zone"
 
 # Credential-based auth (preferred)
-CONF_EMAIL = "email"
+CONF_USER_ID = "user_id"       # Siseli account / user-ID login (not email)
 CONF_PASSWORD = "password"
 
 # Runtime-stored token state (written back to config entry)
@@ -17,12 +17,20 @@ CONF_REFRESH_TOKEN = "refresh_token"
 CONF_ACCESS_TOKEN_EXPIRES = "access_token_expires"   # ISO-8601 string
 CONF_REFRESH_TOKEN_EXPIRES = "refresh_token_expires" # ISO-8601 string
 
-# ─── API base ──────────────────────────────────────────────────────────────────
-API_BASE_URL = "https://solar.siseli.com"
+# ─── API bases ─────────────────────────────────────────────────────────────────
+# The portal JS bundle uses test.solar.siseli.com for auth/login endpoints
+# and solar.siseli.com for data (device-state, station) endpoints.
+API_BASE_URL        = "https://solar.siseli.com"         # data endpoints
+API_AUTH_BASE_URL   = "https://test.solar.siseli.com"    # auth / login endpoints
 
 # ─── Auth endpoints (discovered from portal JS bundle) ─────────────────────────
-API_LOGIN           = "/login/account"                   # POST, no token needed
+# The login endpoint requires IOT-Open-AppID signing (see api.py _sign_request).
+API_LOGIN           = "/apis/login/account"              # POST + signed headers
 API_REFRESH_TOKEN   = "/login/refresh/access/token"      # POST, no token needed
+
+# ─── IOT Open Platform app credentials (embedded in portal umi.js) ────────────
+IOT_APP_ID          = "JO4DAiNeys"
+IOT_APP_SECRET_ENC  = "VK51roUwyT4CJGcDWRp17WMhzX4F702I10fWc0FnC6A="
 
 # ─── Data endpoints ────────────────────────────────────────────────────────────
 API_TIME_SERIES    = "/apis/deviceState/simple/attribute/keys/history/v1"

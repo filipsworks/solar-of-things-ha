@@ -2,37 +2,54 @@
 
 Authentication strategy
 ─────────────────────────────────────────────────────────────────────────────
-The Siseli portal uses a dual-token system discovered via JS bundle analysis:
+The Siseli portal uses a dual-token system.  Login requires the IOT Open
+Platform signing scheme discovered via JS bundle analysis (umi.js):
 
-  • POST /login/account          → accessToken + refreshToken + expiry timestamps
-  • POST /login/refresh/access/token → new accessToken (+ new refreshToken) using
-                                        the current refreshToken
+  Endpoint : POST https://test.solar.siseli.com/apis/login/account
+  Signed   : yes — IOT-Open-AppID, IOT-Open-Nonce, IOT-Open-Body-Hash,
+                    IOT-Open-Sign headers
 
-accessToken  = the "IOT-Token" HTTP header value; short-lived (hours/days)
-refreshToken = long-lived; used only to mint a new accessToken
+Signing algorithm (reverse-engineered from portal umi.js):
+  1. Build a dict of signing headers:
+       {"IOT-Open-AppID": appId,
+        "IOT-Open-Body-Hash": sha256(body_bytes).lower(),
+        "IOT-Open-Nonce": random_32_char_hex}
+  2. Sort keys alphabetically, join as k1=v1&k2=v2 (no URL-encoding).
+  3. base64-encode the resulting string.
+  4. HMAC-SHA256(b64_str, decrypted_app_secret)  [bytes result]
+  5. MD5(hmac_bytes).hexdigest()  → IOT-Open-Sign value
+
+App secret decryption (qe() in umi.js):
+  key = MD5(appId).lower()[:16]  treated as ASCII bytes  (16 bytes = AES-128)
+  iv  = MD5(appId).lower()[16:]  treated as ASCII bytes  (16 bytes)
+  AES-128-CBC-ZeroPadding decrypt of base64(encrypted_secret)
+
+After successful login the server returns an accessToken (used as
+IOT-Token header for data requests) and a refreshToken.
 
 This class supports three auth modes, tried in priority order:
 
-  1. Email + password  (recommended)
+  1. User-ID + password  (recommended)
      • Call login() at startup → stores both tokens in memory.
-     • _ensure_token_valid() checks expiry before every API call and proactively
-       refreshes (TOKEN_REFRESH_LEAD_SECONDS = 5 min before expiry, matching the
-       portal JS behaviour).
-     • If refresh fails, raises TokenExpiredError so the HA integration can
-       trigger a re-auth flow.
+     • _ensure_token_valid() checks expiry before every API call and
+       proactively refreshes (TOKEN_REFRESH_LEAD_SECONDS = 5 min before
+       expiry, mirroring the portal JS behaviour).
+     • If refresh fails, raises TokenExpiredError so the HA integration
+       can trigger a re-auth flow.
 
   2. Token-pair (accessToken + refreshToken) without password
      • User pastes both tokens from DevTools.
-     • Same proactive-refresh logic; re-auth needed when refreshToken expires.
+     • Same proactive-refresh logic; re-auth needed when refreshToken
+       expires.
 
   3. Legacy IOT-token only (backwards compatibility)
-     • No refresh possible; raises TokenExpiredError on 401 so HA can prompt
-       the user to re-enter a fresh token.
+     • No refresh possible; raises TokenExpiredError on 401 so HA can
+       prompt the user to re-enter a fresh token.
 
 Usage in Home Assistant
 ─────────────────────────────────────────────────────────────────────────────
   api = SolarOfThingsAPI(
-      email="user@example.com",
+      user_id="myaccount",
       password="secret",          # or omit and pass iot_token=
       time_zone="Asia/Manila",
       on_token_refreshed=_save_tokens_callback,
@@ -42,12 +59,22 @@ Usage in Home Assistant
 """
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac as _hmac
 import logging
+import os
 import threading
 from datetime import datetime, timezone, timedelta
 from typing import Any, Callable
 
 import requests
+
+try:
+    from Crypto.Cipher import AES as _AES
+    _CRYPTO_AVAILABLE = True
+except ImportError:
+    _CRYPTO_AVAILABLE = False
 
 try:
     from zoneinfo import ZoneInfo
@@ -56,6 +83,7 @@ except Exception:  # pragma: no cover
 
 from .const import (
     API_BASE_URL,
+    API_AUTH_BASE_URL,
     API_LOGIN,
     API_REFRESH_TOKEN as API_REFRESH_TOKEN_ENDPOINT,
     API_TIME_SERIES,
@@ -63,6 +91,8 @@ from .const import (
     API_DEVICE_LIST,
     API_SETTINGS_GET,
     API_SETTINGS_SET,
+    IOT_APP_ID,
+    IOT_APP_SECRET_ENC,
     TOKEN_REFRESH_LEAD_SECONDS,
 )
 
@@ -85,6 +115,78 @@ class TokenExpiredError(Exception):
 
 class AuthenticationError(Exception):
     """Raised when login credentials are rejected by the server."""
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Signing helpers  (reverse-engineered from portal umi.js)
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _decrypt_app_secret(app_id: str, encrypted_b64: str) -> str:
+    """AES-128-CBC decrypt the embedded app secret.
+
+    Key derivation mirrors the portal qe() function:
+      key = MD5(app_id).lower()[:16]  as ASCII bytes
+      iv  = MD5(app_id).lower()[16:]  as ASCII bytes
+    The ciphertext is the base64-decoded encrypted_b64 value.
+    """
+    if not _CRYPTO_AVAILABLE:
+        raise RuntimeError(
+            "pycryptodome is not installed. "
+            "Add 'pycryptodome' to the integration requirements."
+        )
+    md5_hex = hashlib.md5(app_id.encode("utf-8")).hexdigest()
+    key = md5_hex[:16].encode("ascii")   # 16 bytes — AES-128
+    iv  = md5_hex[16:].encode("ascii")   # 16 bytes — CBC IV
+    ciphertext = base64.b64decode(encrypted_b64)
+    cipher = _AES.new(key, _AES.MODE_CBC, iv)
+    plaintext = cipher.decrypt(ciphertext).rstrip(b"\x00")
+    return plaintext.decode("utf-8")
+
+
+def _compute_iot_sign(app_id: str, nonce: str, body_hash: str, secret: str) -> str:
+    """Compute the IOT-Open-Sign header value.
+
+    Algorithm (Ye() in portal umi.js):
+      1. Sort signing headers alphabetically by key.
+      2. qs.stringify → "IOT-Open-AppID=X&IOT-Open-Body-Hash=Y&IOT-Open-Nonce=Z"
+      3. Base64-encode the qs string.
+      4. HMAC-SHA256(b64_qs, secret) → raw bytes.
+      5. MD5(hmac_bytes).hexdigest() → sign value.
+    """
+    sign_headers = {
+        "IOT-Open-AppID": app_id,
+        "IOT-Open-Body-Hash": body_hash,
+        "IOT-Open-Nonce": nonce,
+    }
+    qs_str = "&".join(f"{k}={sign_headers[k]}" for k in sorted(sign_headers.keys()))
+    b64_qs = base64.b64encode(qs_str.encode("utf-8")).decode("ascii")
+    hmac_bytes = _hmac.new(secret.encode("utf-8"), b64_qs.encode("utf-8"), hashlib.sha256).digest()
+    return hashlib.md5(hmac_bytes).hexdigest()
+
+
+def _make_signed_headers(body_bytes: bytes, extra: dict[str, str] | None = None) -> dict[str, str]:
+    """Build the complete set of IOT Open Platform signed request headers.
+
+    Returns headers suitable for POST to API_AUTH_BASE_URL endpoints.
+    """
+    secret = _decrypt_app_secret(IOT_APP_ID, IOT_APP_SECRET_ENC)
+    nonce = os.urandom(16).hex()          # 32-char hex nonce
+    body_hash = hashlib.sha256(body_bytes).hexdigest()
+    sign = _compute_iot_sign(IOT_APP_ID, nonce, body_hash, secret)
+
+    headers: dict[str, str] = {
+        "Accept": "application/json",
+        "Content-Type": "application/json; charset=utf-8",
+        "Origin": "https://solar.siseli.com",
+        "Referer": "https://solar.siseli.com/",
+        "IOT-Open-AppID": IOT_APP_ID,
+        "IOT-Open-Nonce": nonce,
+        "IOT-Open-Body-Hash": body_hash,
+        "IOT-Open-Sign": sign,
+    }
+    if extra:
+        headers.update(extra)
+    return headers
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -115,9 +217,9 @@ class SolarOfThingsAPI:
 
     Parameters
     ----------
-    email:              Siseli portal login e-mail (preferred auth method).
+    user_id:            Siseli portal login account / user-ID (preferred auth method).
     password:           Siseli portal password.
-    iot_token:          Legacy/manual IOT-Token (used when email/password absent).
+    iot_token:          Legacy/manual IOT-Token (used when user_id/password absent).
     refresh_token:      Stored refresh token (persisted between HA restarts).
     access_token_expires: ISO-8601 string of current access-token expiry.
     refresh_token_expires: ISO-8601 string of current refresh-token expiry.
@@ -131,7 +233,7 @@ class SolarOfThingsAPI:
     def __init__(
         self,
         *,
-        email: str | None = None,
+        user_id: str | None = None,
         password: str | None = None,
         iot_token: str | None = None,
         refresh_token: str | None = None,
@@ -140,7 +242,7 @@ class SolarOfThingsAPI:
         time_zone: str | None = None,
         on_token_refreshed: Callable[[str, str, str, str], None] | None = None,
     ) -> None:
-        self._email = email
+        self._user_id = user_id
         self._password = password
         self._time_zone = time_zone or _DEFAULT_TZ
         self._on_token_refreshed = on_token_refreshed
@@ -155,14 +257,14 @@ class SolarOfThingsAPI:
         self._refresh_lock = threading.Lock()
 
         # Determine auth mode
-        if email and password:
+        if user_id and password:
             self._auth_mode = "password"
         elif iot_token and refresh_token:
             self._auth_mode = "token_pair"
         elif iot_token:
             self._auth_mode = "legacy"
         else:
-            raise ValueError("Provide either (email + password) or iot_token.")
+            raise ValueError("Provide either (user_id + password) or iot_token.")
 
         # HTTP session (headers updated after every token refresh)
         self.session = requests.Session()
@@ -181,7 +283,7 @@ class SolarOfThingsAPI:
                 "Origin": "https://solar.siseli.com",
                 "Referer": "https://solar.siseli.com/",
                 "User-Agent": (
-                    "HomeAssistant-SolarOfThings/2.2.0 "
+                    "HomeAssistant-SolarOfThings/2.3.0 "
                     "(+https://github.com/conexocasa/solar-of-things-ha)"
                 ),
             }
@@ -190,32 +292,33 @@ class SolarOfThingsAPI:
     # ─── Public auth helpers ───────────────────────────────────────────────────
 
     def login(self) -> None:
-        """Authenticate with email + password and store the resulting tokens.
+        """Authenticate with user-ID + password and store the resulting tokens.
+
+        Uses the IOT Open Platform signed request format discovered from the
+        portal JS bundle.  The login endpoint is:
+          POST https://test.solar.siseli.com/apis/login/account
 
         Raises AuthenticationError on bad credentials, or requests.RequestException
         on network failure.  Safe to call from a background thread.
         """
         if self._auth_mode not in ("password",):
-            raise RuntimeError("login() requires email + password auth mode.")
+            raise RuntimeError("login() requires user_id + password auth mode.")
 
-        _LOGGER.debug("SolarOfThings: logging in as %s", self._email)
+        _LOGGER.debug("SolarOfThings: logging in as %s", self._user_id)
 
+        import json as _json
         payload = {
-            "email": self._email,
+            "account": self._user_id,
             "password": self._password,
-            "loginType": "email",
         }
+        body_bytes = _json.dumps(payload, separators=(",", ":")).encode("utf-8")
 
-        # Auth endpoints must NOT carry the IOT-Token header yet
+        headers = _make_signed_headers(body_bytes)
+
         resp = requests.post(
-            f"{API_BASE_URL}{API_LOGIN}",
-            json=payload,
-            headers={
-                "Accept": "application/json",
-                "Content-Type": "application/json; charset=utf-8",
-                "Origin": "https://solar.siseli.com",
-                "Referer": "https://solar.siseli.com/",
-            },
+            f"{API_AUTH_BASE_URL}{API_LOGIN}",
+            data=body_bytes,
+            headers=headers,
             timeout=30,
         )
         resp.raise_for_status()
@@ -238,7 +341,7 @@ class SolarOfThingsAPI:
         _LOGGER.debug("SolarOfThings: refreshing access token")
 
         resp = requests.post(
-            f"{API_BASE_URL}{API_REFRESH_TOKEN_ENDPOINT}",
+            f"{API_AUTH_BASE_URL}{API_REFRESH_TOKEN_ENDPOINT}",
             json={"refreshToken": self._refresh_token},
             headers={
                 "Accept": "application/json",
@@ -357,7 +460,7 @@ class SolarOfThingsAPI:
                     _LOGGER.error("SolarOfThings: token refresh request failed: %s", err)
 
             # Strategy 2: re-login with stored credentials
-            if self._auth_mode == "password" and self._email and self._password:
+            if self._auth_mode == "password" and self._user_id and self._password:
                 try:
                     self.login()
                     return
@@ -379,9 +482,10 @@ class SolarOfThingsAPI:
     # ─── Internal HTTP helper ──────────────────────────────────────────────────
 
     def _post(self, path: str, payload: dict[str, Any], *, timeout: int = 30) -> dict[str, Any]:
-        """Perform a POST, automatically refreshing the token on 401.
+        """Perform a POST to a data endpoint, automatically refreshing the token on 401.
 
         On second 401 (after refresh) raises TokenExpiredError.
+        Uses API_BASE_URL (solar.siseli.com) — not the auth base URL.
         """
         self._ensure_token_valid()
 
@@ -566,98 +670,66 @@ class SolarOfThingsAPI:
                 f"message={data.get('message')}"
             )
 
-        props = (((data.get("data") or {}).get("properties")) or [])
-        out: dict[str, Any] = {}
+        props = (((data.get("data") or {}).get("properties")) or
+                 (data.get("data") or {}).get("list") or
+                 [])
 
-        for prop in props:
-            prop_key = ((prop.get("property") or {}).get("key"))
-            if not prop_key:
-                continue
-            for tp in prop.get("timePoints") or []:
-                if tp.get("time") == month_key and tp.get("isRealValue"):
-                    out[prop_key] = tp.get("value")
+        result: dict[str, Any] = {}
+        for item in props if isinstance(props, list) else []:
+            k = item.get("key") or item.get("name")
+            v = item.get("value")
+            if k and v is not None:
+                result[k] = v
 
-        if "pvGeneratedEnergy" in out:
-            return {"monthly_pv_generated": float(out.get("pvGeneratedEnergy") or 0)}
+        # Extract monthly totals (fallback: look for known keys)
+        monthly: dict[str, Any] = {}
+        pv_total = result.get(month_key) or result.get("pvTotal") or result.get("pv") or 0
+        monthly["monthly_pv_generated"] = float(pv_total or 0)
 
-        return {}
+        grid_import = result.get("gridImport") or result.get("buy") or 0
+        monthly["monthly_grid_import"] = float(grid_import or 0)
 
-    # ─── Settings / control (per device) ──────────────────────────────────────
+        total_consumption = result.get("totalConsumption") or result.get("load") or 0
+        monthly["monthly_total_consumption"] = float(total_consumption or 0)
 
-    def fetch_settings(self, device_id: str) -> dict[str, Any]:
-        """Fetch current device settings."""
-        try:
-            data = self._post(API_SETTINGS_GET, {"deviceId": device_id})
-            settings: dict[str, Any] = {}
-            if "data" in data:
-                sd = data["data"]
-                settings["batteryChargeLimit"] = sd.get("batteryChargeLimit", 100)
-                settings["batteryDischargeLimit"] = sd.get("batteryDischargeLimit", 10)
-                settings["gridChargeLimit"] = sd.get("gridChargeLimit", 0)
-                settings["operatingMode"] = sd.get("operatingMode", "Self-Use")
-                settings["batteryPriority"] = sd.get("batteryPriority", "Solar First")
-                settings["gridChargingEnabled"] = sd.get("gridChargingEnabled", False)
-                settings["gridFeedInEnabled"] = sd.get("gridFeedInEnabled", True)
-                settings["backupModeEnabled"] = sd.get("backupModeEnabled", False)
-            return settings
-        except requests.exceptions.RequestException as err:
-            _LOGGER.error("Error fetching settings for device %s: %s", device_id, err)
-            return {}
-
-    def _update_setting(self, device_id: str, setting_key: str, value: Any) -> bool:
-        try:
-            data = self._post(
-                API_SETTINGS_SET,
-                {"deviceId": device_id, "settings": {setting_key: value}},
+        if monthly["monthly_total_consumption"] > 0:
+            monthly["monthly_solar_percentage"] = round(
+                100.0 * monthly["monthly_pv_generated"] / monthly["monthly_total_consumption"], 1
             )
-            if data.get("success") is True or data.get("code") in (0, None):
-                _LOGGER.info("Updated %s=%s for device %s", setting_key, value, device_id)
-                return True
-            _LOGGER.error("Failed to update %s for device %s: %s", setting_key, device_id, data)
-            return False
-        except requests.exceptions.RequestException as err:
-            _LOGGER.error("Error updating %s for device %s: %s", setting_key, device_id, err)
-            return False
+        else:
+            monthly["monthly_solar_percentage"] = 0.0
 
-    def set_battery_charge_limit(self, device_id: str, limit: int) -> bool:
-        return self._update_setting(device_id, "batteryChargeLimit", limit)
+        return monthly
 
-    def set_battery_discharge_limit(self, device_id: str, limit: int) -> bool:
-        return self._update_setting(device_id, "batteryDischargeLimit", limit)
+    # ─── Device settings ───────────────────────────────────────────────────────
 
-    def set_grid_charge_limit(self, device_id: str, limit: int) -> bool:
-        return self._update_setting(device_id, "gridChargeLimit", limit)
+    def get_device_settings(self, device_id: str) -> dict[str, Any]:
+        """Fetch current device settings."""
+        data = self._post(API_SETTINGS_GET, {"deviceId": device_id})
+        if data.get("code") not in (0, None):
+            raise RuntimeError(
+                f"Settings fetch error code={data.get('code')} "
+                f"message={data.get('message')}"
+            )
+        return data.get("data") or {}
 
-    def set_operating_mode(self, device_id: str, mode: str) -> bool:
-        return self._update_setting(device_id, "operatingMode", mode)
+    def update_device_settings(self, device_id: str, settings: dict[str, Any]) -> None:
+        """Update one or more device settings."""
+        payload = {"deviceId": device_id, **settings}
+        data = self._post(API_SETTINGS_SET, payload)
+        if data.get("code") not in (0, None):
+            raise RuntimeError(
+                f"Settings update error code={data.get('code')} "
+                f"message={data.get('message')}"
+            )
 
-    def set_battery_priority(self, device_id: str, priority: str) -> bool:
-        return self._update_setting(device_id, "batteryPriority", priority)
-
-    def set_grid_charging(self, device_id: str, enabled: bool) -> bool:
-        return self._update_setting(device_id, "gridChargingEnabled", enabled)
-
-    def set_grid_feed_in(self, device_id: str, enabled: bool) -> bool:
-        return self._update_setting(device_id, "gridFeedInEnabled", enabled)
-
-    def set_backup_mode(self, device_id: str, enabled: bool) -> bool:
-        return self._update_setting(device_id, "backupModeEnabled", enabled)
-
-    # ─── Validation ───────────────────────────────────────────────────────────
+    # ─── Connection test ───────────────────────────────────────────────────────
 
     def test_connection(self, station_id: str) -> bool:
-        """Validate credentials + station by listing devices and querying telemetry."""
+        """Return True if we can reach the device-list endpoint successfully."""
         try:
-            devices = self.list_devices(station_id)
-            if not devices:
-                return False
-            device_id = str((devices[0].get("id") or ""))
-            if not device_id:
-                return False
-            self.fetch_latest_data(device_id)
+            devices = self.list_devices(station_id, page_size=1)
             return True
-        except TokenExpiredError:
-            raise
         except Exception as err:
-            _LOGGER.error("Connection test failed: %s", err)
+            _LOGGER.error("SolarOfThings: connection test failed: %s", err)
             return False

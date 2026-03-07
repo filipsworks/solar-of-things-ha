@@ -82,7 +82,7 @@ The **Solar of Things** integration connects Home Assistant to the
 | 🎛️ **System control** | 8 control entities (battery limits, modes, grid switches) |
 | ⚡ **Energy Dashboard** | All power and energy sensors are dashboard-ready |
 | 🏠 **Multi-station** | Unlimited stations via multiple config entries |
-| 🔒 **Secure auth** | IOT-Token header authentication (no username/password stored) |
+| 🔒 **Secure auth** | User ID + Password login with automatic token refresh (no manual token copying) |
 | 🌏 **Timezone-aware** | Configurable `IOT-Time-Zone` header per integration |
 | 🔄 **Auto-retry** | HA coordinator pattern with automatic retry on failure |
 
@@ -610,6 +610,8 @@ See **[CHANGELOG.md](CHANGELOG.md)** for a full history.
 
 | Version | Highlights |
 |---|---|
+| **v2.3.0** | User ID/Account auth, working IOT-Open signing (AES+HMAC+MD5), correct login endpoint |
+| **v2.2.0** | Email + Password auth, automatic token refresh 5 min before expiry, HA re-auth flow |
 | **v2.1.1** | HACS metadata, GitHub Actions CI/CD, issue templates, release script |
 | **v2.1.0** | Station-based device auto-discovery (`/apis/device/list`) |
 | **v2.0.0** | Control entities (battery limits, operating modes, grid switches) |

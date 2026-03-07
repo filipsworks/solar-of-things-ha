@@ -1,7 +1,7 @@
 """Config flow for Solar of Things integration.
 
 Supports two setup modes:
-  1. Email + Password  (recommended) – integration logs in automatically and
+  1. User-ID + Password  (recommended) – integration logs in automatically and
      refreshes the token without any user intervention.
   2. IOT Token (legacy / advanced) – user pastes the token from DevTools.
      A re-auth flow is triggered when the token expires.
@@ -26,7 +26,7 @@ from homeassistant.helpers import config_validation as cv
 from .api import SolarOfThingsAPI, AuthenticationError, TokenExpiredError
 from .const import (
     DOMAIN,
-    CONF_EMAIL,
+    CONF_USER_ID,
     CONF_PASSWORD,
     CONF_IOT_TOKEN,
     CONF_STATION_ID,
@@ -42,9 +42,9 @@ _LOGGER = logging.getLogger(__name__)
 # ─── Validation helpers ────────────────────────────────────────────────────────
 
 async def _validate_password_auth(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
-    """Validate email/password auth, return title."""
+    """Validate user-ID/password auth, return title."""
     api = SolarOfThingsAPI(
-        email=data[CONF_EMAIL],
+        user_id=data[CONF_USER_ID],
         password=data[CONF_PASSWORD],
         time_zone=data.get(CONF_TIME_ZONE),
     )
@@ -119,7 +119,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Required("auth_mode", default="password"): vol.In(
-                        {"password": "Email + Password (recommended)", "token": "IOT Token (advanced)"}
+                        {"password": "User ID + Password (recommended)", "token": "IOT Token (advanced)"}
                     )
                 }
             ),
@@ -128,10 +128,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             },
         )
 
-    # ── Step 2a: email + password ──────────────────────────────────────────────
+    # ── Step 2a: user-id + password ────────────────────────────────────────────
 
     async def async_step_password(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        """Email + password setup step."""
+        """User-ID + password setup step."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -148,7 +148,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 await self.async_set_unique_id(f"station_{user_input[CONF_STATION_ID]}")
                 self._abort_if_unique_id_configured()
                 entry_data = {
-                    CONF_EMAIL: user_input[CONF_EMAIL],
+                    CONF_USER_ID: user_input[CONF_USER_ID],
                     CONF_PASSWORD: user_input[CONF_PASSWORD],
                     CONF_STATION_ID: user_input[CONF_STATION_ID],
                     CONF_DEVICE_ID: user_input.get(CONF_DEVICE_ID, ""),
@@ -164,7 +164,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="password",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_EMAIL): cv.string,
+                    vol.Required(CONF_USER_ID): cv.string,
                     vol.Required(CONF_PASSWORD): cv.string,
                     vol.Required(CONF_STATION_ID): cv.string,
                     vol.Optional(CONF_DEVICE_ID): cv.string,
@@ -225,7 +225,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
         existing_entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
         has_password = bool(
-            existing_entry and existing_entry.data.get(CONF_PASSWORD)
+            existing_entry
+            and (
+                existing_entry.data.get(CONF_PASSWORD)
+                or existing_entry.data.get(CONF_USER_ID)
+            )
         )
 
         if user_input is not None:

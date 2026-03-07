@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-03-07
+
+### Changed
+- **Authentication now uses User ID / Account** instead of email address.
+  The `CONF_EMAIL` config key is replaced by `CONF_USER_ID` (`user_id`).
+  The login payload now sends `{"account": ..., "password": ...}` matching
+  the Siseli portal's account-login flow.
+
+### Fixed
+- **Fully working IOT Open Platform request signing** — reverse-engineered the
+  complete signing algorithm from the portal `umi.js` bundle:
+  - Secret decryption: `AES-128-CBC(base64(enc_secret), key=MD5(appID)[:16], iv=MD5(appID)[16:])`.
+  - Signature: `MD5(HMAC-SHA256(base64(sorted_qs_headers), decrypted_secret))`.
+  - The algorithm was **live-tested** against `test.solar.siseli.com/apis/login/account`
+    and confirmed to return code `20007` (invalid credentials) rather than the
+    previous code `44` (sign error) — proving the signing is now accepted by the server.
+- **Correct API base URLs**:
+  - Auth/login endpoints: `https://test.solar.siseli.com` (as hardcoded in portal JS).
+  - Data endpoints: `https://solar.siseli.com` (unchanged).
+  - Login path fixed from `/login/account` (404) → `/apis/login/account` (200).
+
+### Added
+- `API_AUTH_BASE_URL`, `IOT_APP_ID`, `IOT_APP_SECRET_ENC` constants in `const.py`.
+- `_decrypt_app_secret()`, `_compute_iot_sign()`, `_make_signed_headers()` helpers in `api.py`.
+- `pycryptodome>=3.9.0` added to `manifest.json` requirements for AES decryption.
+
+### Migration note
+Existing entries that used `email` for auth will need to re-authenticate:
+Home Assistant will show a re-auth prompt where you enter your **User ID** and password.
 ## [2.2.0] - 2026-03-06
 
 ### Added
