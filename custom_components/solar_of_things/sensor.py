@@ -1,9 +1,14 @@
 """Sensor platform for Solar of Things integration."""
+
 from __future__ import annotations
 
 import logging
 
-from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     PERCENTAGE,
@@ -125,17 +130,20 @@ class SolarOfThingsDeviceSensor(CoordinatorEntity, SensorEntity):
             "identifiers": {(DOMAIN, self._station_id, self._device_id)},
             "name": self._device_name,
             "manufacturer": "Siseli",
-            "model": (self.coordinator.data.get("device_meta") or {}).get("model") if self.coordinator.data else None,
+            "model": (self.coordinator.data.get("device_meta") or {}).get("model")
+            if self.coordinator.data
+            else None,
             "via_device": (DOMAIN, self._station_id),
         }
 
     @property
     def native_value(self):
-        ts = (self.coordinator.data or {}).get("time_series") or {}
-        val = ts.get(self._sensor_key)
-        if val is None:
+        latest = (self.coordinator.data or {}).get("latest_state") or {}
+        info = latest.get(self._sensor_key)
+        if info is None or info.get("value") is None:
             return None
         try:
+            val = info["value"]
             return round(float(val), 2)
         except Exception:
             return None
@@ -181,11 +189,12 @@ class SolarOfThingsStationMonthlySensor(CoordinatorEntity, SensorEntity):
 
     @property
     def native_value(self):
-        monthly = (self.coordinator.data or {}).get("monthly") or {}
-        val = monthly.get(self._sensor_key)
-        if val is None:
+        latest = (self.coordinator.data or {}).get("latest_state") or {}
+        info = latest.get(self._sensor_key)
+        if info is None or info.get("value") is None:
             return None
         try:
+            val = info["value"]
             return round(float(val), 2)
         except Exception:
             return None

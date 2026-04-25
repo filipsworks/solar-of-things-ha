@@ -57,6 +57,7 @@ Usage in Home Assistant
   await hass.async_add_executor_job(api.login)
   data = await hass.async_add_executor_job(api.fetch_latest_data, device_id)
 """
+
 from __future__ import annotations
 
 import base64
@@ -65,13 +66,14 @@ import hmac as _hmac
 import logging
 import os
 import threading
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
 import requests
 
 try:
     from Crypto.Cipher import AES as _AES
+
     _CRYPTO_AVAILABLE = True
 except ImportError:
     _CRYPTO_AVAILABLE = False
@@ -82,18 +84,20 @@ except Exception:  # pragma: no cover
     ZoneInfo = None  # type: ignore[assignment]
 
 from .const import (
-    API_BASE_URL,
     API_AUTH_BASE_URL,
-    API_LOGIN,
-    API_REFRESH_TOKEN as API_REFRESH_TOKEN_ENDPOINT,
-    API_TIME_SERIES,
-    API_MONTHLY_SUMMARY,
+    API_BASE_URL,
     API_DEVICE_LIST,
+    API_LOGIN,
+    API_MONTHLY_SUMMARY,
     API_SETTINGS_GET,
     API_SETTINGS_SET,
+    API_TIME_SERIES,
     IOT_APP_ID,
     IOT_APP_SECRET_ENC,
     TOKEN_REFRESH_LEAD_SECONDS,
+)
+from .const import (
+    API_REFRESH_TOKEN as API_REFRESH_TOKEN_ENDPOINT,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -104,6 +108,7 @@ _DEFAULT_TZ = "Asia/Manila"
 # ──────────────────────────────────────────────────────────────────────────────
 # Custom exceptions
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 class TokenExpiredError(Exception):
     """Raised when the access token has expired and cannot be refreshed.
@@ -121,6 +126,7 @@ class AuthenticationError(Exception):
 # Signing helpers  (reverse-engineered from portal umi.js)
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def _decrypt_app_secret(app_id: str, encrypted_b64: str) -> str:
     """AES-128-CBC decrypt the embedded app secret.
 
@@ -135,8 +141,8 @@ def _decrypt_app_secret(app_id: str, encrypted_b64: str) -> str:
             "Add 'pycryptodome' to the integration requirements."
         )
     md5_hex = hashlib.md5(app_id.encode("utf-8")).hexdigest()
-    key = md5_hex[:16].encode("ascii")   # 16 bytes — AES-128
-    iv  = md5_hex[16:].encode("ascii")   # 16 bytes — CBC IV
+    key = md5_hex[:16].encode("ascii")  # 16 bytes — AES-128
+    iv = md5_hex[16:].encode("ascii")  # 16 bytes — CBC IV
     ciphertext = base64.b64decode(encrypted_b64)
     cipher = _AES.new(key, _AES.MODE_CBC, iv)
     plaintext = cipher.decrypt(ciphertext).rstrip(b"\x00")
@@ -160,17 +166,21 @@ def _compute_iot_sign(app_id: str, nonce: str, body_hash: str, secret: str) -> s
     }
     qs_str = "&".join(f"{k}={sign_headers[k]}" for k in sorted(sign_headers.keys()))
     b64_qs = base64.b64encode(qs_str.encode("utf-8")).decode("ascii")
-    hmac_bytes = _hmac.new(secret.encode("utf-8"), b64_qs.encode("utf-8"), hashlib.sha256).digest()
+    hmac_bytes = _hmac.new(
+        secret.encode("utf-8"), b64_qs.encode("utf-8"), hashlib.sha256
+    ).digest()
     return hashlib.md5(hmac_bytes).hexdigest()
 
 
-def _make_signed_headers(body_bytes: bytes, extra: dict[str, str] | None = None) -> dict[str, str]:
+def _make_signed_headers(
+    body_bytes: bytes, extra: dict[str, str] | None = None
+) -> dict[str, str]:
     """Build the complete set of IOT Open Platform signed request headers.
 
     Returns headers suitable for POST to API_AUTH_BASE_URL endpoints.
     """
     secret = _decrypt_app_secret(IOT_APP_ID, IOT_APP_SECRET_ENC)
-    nonce = os.urandom(16).hex()          # 32-char hex nonce
+    nonce = os.urandom(16).hex()  # 32-char hex nonce
     body_hash = hashlib.sha256(body_bytes).hexdigest()
     sign = _compute_iot_sign(IOT_APP_ID, nonce, body_hash, secret)
 
@@ -193,6 +203,7 @@ def _make_signed_headers(body_bytes: bytes, extra: dict[str, str] | None = None)
 # Helper: parse Siseli ISO expiry strings safely
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def _parse_expiry(value: str | None) -> datetime | None:
     """Return an aware UTC datetime from an ISO-8601 string, or None."""
     if not value:
@@ -211,6 +222,7 @@ def _parse_expiry(value: str | None) -> datetime | None:
 # ──────────────────────────────────────────────────────────────────────────────
 # Main API client
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 class SolarOfThingsAPI:
     """Solar of Things API wrapper with automatic token refresh.
@@ -310,6 +322,7 @@ class SolarOfThingsAPI:
         _LOGGER.debug("SolarOfThings: logging in as %s", self._user_id)
 
         import json as _json
+
         # The portal sends the password as MD5(plaintext_password) lowercase hex.
         # Sending plaintext returns code 7 "password error" even with valid creds.
         password_md5 = hashlib.md5(self._password.encode("utf-8")).hexdigest()
@@ -359,7 +372,9 @@ class SolarOfThingsAPI:
         )
 
         if resp.status_code in (401, 403):
-            raise TokenExpiredError("Refresh token rejected by server (expired or invalid).")
+            raise TokenExpiredError(
+                "Refresh token rejected by server (expired or invalid)."
+            )
 
         resp.raise_for_status()
         data = resp.json()
@@ -463,7 +478,9 @@ class SolarOfThingsAPI:
                         "attempting re-login"
                     )
                 except Exception as err:
-                    _LOGGER.error("SolarOfThings: token refresh request failed: %s", err)
+                    _LOGGER.error(
+                        "SolarOfThings: token refresh request failed: %s", err
+                    )
 
             # Strategy 2: re-login with stored credentials
             if self._auth_mode == "password" and self._user_id and self._password:
@@ -487,7 +504,9 @@ class SolarOfThingsAPI:
 
     # ─── Internal HTTP helper ──────────────────────────────────────────────────
 
-    def _post(self, path: str, payload: dict[str, Any], *, timeout: int = 30) -> dict[str, Any]:
+    def _post(
+        self, path: str, payload: dict[str, Any], *, timeout: int = 30
+    ) -> dict[str, Any]:
         """Perform a POST to a data endpoint, automatically refreshing the token on 401.
 
         On second 401 (after refresh) raises TokenExpiredError.
@@ -502,7 +521,9 @@ class SolarOfThingsAPI:
             # Force an immediate refresh even if _token_needs_refresh() is False
             self._access_expires = None
             self._ensure_token_valid()
-            resp = self.session.post(f"{API_BASE_URL}{path}", json=payload, timeout=timeout)
+            resp = self.session.post(
+                f"{API_BASE_URL}{path}", json=payload, timeout=timeout
+            )
 
         resp.raise_for_status()
         return resp.json()
@@ -545,7 +566,9 @@ class SolarOfThingsAPI:
 
     # ─── Station → device listing ──────────────────────────────────────────────
 
-    def list_devices(self, station_id: str, page_size: int = 50) -> list[dict[str, Any]]:
+    def list_devices(
+        self, station_id: str, page_size: int = 50
+    ) -> list[dict[str, Any]]:
         """Return all devices under a station (paginated)."""
         devices: list[dict[str, Any]] = []
         page = 1
@@ -647,8 +670,34 @@ class SolarOfThingsAPI:
         feed_in = float(latest_values.get("feedInPower") or 0)
         battery_power = float(latest_values.get("batteryPower") or 0)
 
-        latest_values["gridPower"] = max(0.0, ac_output - pv_power + battery_power + feed_in)
+        latest_values["gridPower"] = max(
+            0.0, ac_output - pv_power + battery_power + feed_in
+        )
         latest_values["loadPower"] = ac_output
+
+        return latest_values
+
+    def fetch_latest_state(self, device_id: str) -> dict[str, Any]:
+        """Fetch the latest state (all fields) for a device."""
+        data = self._post(
+            API_LATEST_STATE,
+            {"deviceId": device_id},
+        )
+
+        if data.get("code") not in (0, None):
+            raise RuntimeError(
+                f"Latest state error code={data.get('code')} "
+                f"message={data.get('message')}"
+            )
+
+        fields = (data.get("data") or {}).get("fields") or {}
+        latest_values: dict[str, Any] = {}
+        for key, field_info in fields.items():
+            latest_values[key] = {
+                "value": field_info.get("value"),
+                "unit": field_info.get("unit"),
+                "nameDisplay": field_info.get("nameDisplay"),
+            }
 
         return latest_values
 
@@ -676,9 +725,11 @@ class SolarOfThingsAPI:
                 f"message={data.get('message')}"
             )
 
-        props = (((data.get("data") or {}).get("properties")) or
-                 (data.get("data") or {}).get("list") or
-                 [])
+        props = (
+            ((data.get("data") or {}).get("properties"))
+            or (data.get("data") or {}).get("list")
+            or []
+        )
 
         result: dict[str, Any] = {}
         for item in props if isinstance(props, list) else []:
@@ -689,7 +740,9 @@ class SolarOfThingsAPI:
 
         # Extract monthly totals (fallback: look for known keys)
         monthly: dict[str, Any] = {}
-        pv_total = result.get(month_key) or result.get("pvTotal") or result.get("pv") or 0
+        pv_total = (
+            result.get(month_key) or result.get("pvTotal") or result.get("pv") or 0
+        )
         monthly["monthly_pv_generated"] = float(pv_total or 0)
 
         grid_import = result.get("gridImport") or result.get("buy") or 0
@@ -700,7 +753,10 @@ class SolarOfThingsAPI:
 
         if monthly["monthly_total_consumption"] > 0:
             monthly["monthly_solar_percentage"] = round(
-                100.0 * monthly["monthly_pv_generated"] / monthly["monthly_total_consumption"], 1
+                100.0
+                * monthly["monthly_pv_generated"]
+                / monthly["monthly_total_consumption"],
+                1,
             )
         else:
             monthly["monthly_solar_percentage"] = 0.0
@@ -774,22 +830,28 @@ class SolarOfThingsAPI:
         "Solar First (SNU)": 1,
         "Solar Only (OSO)": 2,
     }
-    _CHARGER_PRIORITY_REVERSE: dict[int, str] = {v: k for k, v in _CHARGER_PRIORITY_MAP.items()}
+    _CHARGER_PRIORITY_REVERSE: dict[int, str] = {
+        v: k for k, v in _CHARGER_PRIORITY_MAP.items()
+    }
 
     def set_operating_mode(self, device_id: str, mode: str) -> None:
         """Set Output Source Priority.  mode is one of _OUTPUT_MODE_MAP keys."""
         value = self._OUTPUT_MODE_MAP.get(mode)
         if value is None:
-            raise ValueError(f"Unknown operating mode: {mode!r}. "
-                             f"Valid options: {list(self._OUTPUT_MODE_MAP)!r}")
+            raise ValueError(
+                f"Unknown operating mode: {mode!r}. "
+                f"Valid options: {list(self._OUTPUT_MODE_MAP)!r}"
+            )
         self._write_setting(device_id, "outputSourcePrioritySetting", value)
 
     def set_battery_priority(self, device_id: str, mode: str) -> None:
         """Set Charger Source Priority.  mode is one of _CHARGER_PRIORITY_MAP keys."""
         value = self._CHARGER_PRIORITY_MAP.get(mode)
         if value is None:
-            raise ValueError(f"Unknown battery priority: {mode!r}. "
-                             f"Valid options: {list(self._CHARGER_PRIORITY_MAP)!r}")
+            raise ValueError(
+                f"Unknown battery priority: {mode!r}. "
+                f"Valid options: {list(self._CHARGER_PRIORITY_MAP)!r}"
+            )
         self._write_setting(device_id, "chargerSourcePrioritySetting", value)
 
     def set_grid_charging(self, device_id: str, enabled: bool) -> None:
@@ -798,12 +860,14 @@ class SolarOfThingsAPI:
 
     def set_grid_feed_in(self, device_id: str, enabled: bool) -> None:
         """Enable or disable the GRID grid switch (batteryPowerLimitingSetting)."""
-        self._write_setting(device_id, "batteryPowerLimitingSetting", 1 if enabled else 0)
+        self._write_setting(
+            device_id, "batteryPowerLimitingSetting", 1 if enabled else 0
+        )
 
     def set_backup_mode(self, device_id: str, enabled: bool) -> None:
         """Set Output Source Priority to SBU (backup/off-grid priority) when True,
         or SUB (solar-first, grid-supplemented) when False."""
-        value = 2 if enabled else 1   # SBU=2 (battery before grid), SUB=1
+        value = 2 if enabled else 1  # SBU=2 (battery before grid), SUB=1
         self._write_setting(device_id, "outputSourcePrioritySetting", value)
 
     def test_connection(self, station_id: str) -> bool:

@@ -3,47 +3,48 @@
 DOMAIN = "solar_of_things"
 
 # ─── Configuration keys ────────────────────────────────────────────────────────
-CONF_IOT_TOKEN = "iot_token"          # legacy / advanced manual entry
+CONF_IOT_TOKEN = "iot_token"  # legacy / advanced manual entry
 CONF_STATION_ID = "station_id"
 CONF_DEVICE_ID = "device_id"
 CONF_TIME_ZONE = "time_zone"
 
 # Credential-based auth (preferred)
-CONF_USER_ID = "user_id"       # Siseli account / user-ID login (not email)
+CONF_USER_ID = "user_id"  # Siseli account / user-ID login (not email)
 CONF_PASSWORD = "password"
 
 # Runtime-stored token state (written back to config entry)
 CONF_REFRESH_TOKEN = "refresh_token"
-CONF_ACCESS_TOKEN_EXPIRES = "access_token_expires"   # ISO-8601 string
-CONF_REFRESH_TOKEN_EXPIRES = "refresh_token_expires" # ISO-8601 string
+CONF_ACCESS_TOKEN_EXPIRES = "access_token_expires"  # ISO-8601 string
+CONF_REFRESH_TOKEN_EXPIRES = "refresh_token_expires"  # ISO-8601 string
 
 # ─── API bases ─────────────────────────────────────────────────────────────────
 # Both auth and data endpoints live on the production server solar.siseli.com.
 # The portal JS bundle embeds both test/prod AppIDs; AppID rBrTRfAPXz is the
 # one accepted by solar.siseli.com (confirmed by live API testing 2026-03-07).
-API_BASE_URL        = "https://solar.siseli.com"         # data endpoints
-API_AUTH_BASE_URL   = "https://solar.siseli.com"         # auth / login endpoints
+API_BASE_URL = "https://solar.siseli.com"  # data endpoints
+API_AUTH_BASE_URL = "https://solar.siseli.com"  # auth / login endpoints
 
 # ─── Auth endpoints (discovered from portal JS bundle) ─────────────────────────
 # The login endpoint requires IOT-Open-AppID signing (see api.py _sign_request).
-API_LOGIN           = "/apis/login/account"              # POST + signed headers
-API_REFRESH_TOKEN   = "/login/refresh/access/token"      # POST, no token needed
+API_LOGIN = "/apis/login/account"  # POST + signed headers
+API_REFRESH_TOKEN = "/login/refresh/access/token"  # POST, no token needed
 
 # ─── IOT Open Platform app credentials (embedded in portal umi.js) ────────────
 # rBrTRfAPXz is the production AppID accepted by solar.siseli.com.
 # JO4DAiNeys is the test AppID (accepted only by test.solar.siseli.com).
-IOT_APP_ID          = "rBrTRfAPXz"
-IOT_APP_SECRET_ENC  = "I4D0KRr2339z3pQ/at91V9BpFAOe54DaTafwSm6suIQ="
+IOT_APP_ID = "rBrTRfAPXz"
+IOT_APP_SECRET_ENC = "I4D0KRr2339z3pQ/at91V9BpFAOe54DaTafwSm6suIQ="
 
 # ─── Data endpoints ────────────────────────────────────────────────────────────
-API_TIME_SERIES    = "/apis/deviceState/simple/attribute/keys/history/v1"
+API_TIME_SERIES = "/apis/deviceState/simple/attribute/keys/history/v1"
 API_MONTHLY_SUMMARY = "/apis/stationOverView/stateAttributeSummary/category/yearly"
+API_LATEST_STATE = "/apis/deviceState/simple/state/latest/v1"
 # Remote device config endpoints (discovered 2026-03-07 from live API testing).
 # These accept a plain IOT-Token header (no IOT-Open-Sign) and use the device ID
 # as a query parameter.  Write sends one setting key+value per call.
-API_SETTINGS_GET   = "/apis/remote/device/configs/cache/get"  # ?deviceId=<id>
-API_SETTINGS_SET   = "/apis/remote/device/config/write"       # ?deviceId=<id>
-API_DEVICE_LIST    = "/apis/device/list"
+API_SETTINGS_GET = "/apis/remote/device/configs/cache/get"  # ?deviceId=<id>
+API_SETTINGS_SET = "/apis/remote/device/config/write"  # ?deviceId=<id>
+API_DEVICE_LIST = "/apis/device/list"
 
 # ─── Token refresh window ──────────────────────────────────────────────────────
 # Refresh the access token this many seconds *before* its stated expiry.
