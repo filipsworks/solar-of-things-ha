@@ -111,7 +111,7 @@ class SolarOfThingsOperatingModeSelect(_BaseSelect):
 
 
 class SolarOfThingsBatteryPrioritySelect(_BaseSelect):
-    """Select entity for Charger Source Priority (chargerSourcePrioritySetting).
+    """Select entity for Charger Source Priority (chargerPrioritySetting).
 
     Reflects the real device API key.  Values 0/1/2 map to CSO/SNU/OSO.
     """
@@ -128,7 +128,7 @@ class SolarOfThingsBatteryPrioritySelect(_BaseSelect):
     @property
     def current_option(self) -> str | None:
         settings = (self.coordinator.data or {}).get("settings") or {}
-        entry = settings.get("chargerSourcePrioritySetting")
+        entry = settings.get("chargerPrioritySetting")
         if entry is None:
             return None
         raw = entry.get("value") if isinstance(entry, dict) else entry
