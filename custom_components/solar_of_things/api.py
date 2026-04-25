@@ -818,9 +818,10 @@ class SolarOfThingsAPI:
 
     # Operating-mode select maps HA option strings to integer values
     _OUTPUT_MODE_MAP: dict[str, int] = {
-        "Utility First (USO)": 0,
-        "Solar First (SUB)": 1,
-        "Solar+Battery First (SBU)": 2,
+        "Solar First (SUB)": 0,
+        "Solar+Battery First (SBU)": 1,
+        "Solar+Battery+Grid (SUF)": 2,
+        "Power Export Control (PEC)": 3,
     }
     _OUTPUT_MODE_REVERSE: dict[int, str] = {v: k for k, v in _OUTPUT_MODE_MAP.items()}
 
@@ -829,6 +830,7 @@ class SolarOfThingsAPI:
         "Solar + Utility (CSO)": 0,
         "Solar First (SNU)": 1,
         "Solar Only (OSO)": 2,
+        "Solar residual (SOR)": 3,
     }
     _CHARGER_PRIORITY_REVERSE: dict[int, str] = {
         v: k for k, v in _CHARGER_PRIORITY_MAP.items()
