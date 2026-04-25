@@ -43,10 +43,25 @@ async def async_setup_entry(
     # Per-device sensors
     for device_id, coordinator in device_coordinators.items():
         device_name = (coordinator.device_meta or {}).get("name") or device_id
+        latest_state = (coordinator.data or {}).get("latest_state") or {}
 
-        for key, definition in SENSOR_DEFINITIONS.items():
+        # Create sensors for both predefined keys and discovered keys from the API response
+        all_keys = set(SENSOR_DEFINITIONS.keys()) | set(latest_state.keys())
+
+        for key in all_keys:
             if key.startswith("monthly_"):
                 continue
+
+            if key in SENSOR_DEFINITIONS:
+                definition = SENSOR_DEFINITIONS[key]
+            else:
+                # For discovered keys, use information from the latest API response
+                info = latest_state.get(key, {})
+                definition = {
+                    "name": info.get("nameDisplay", key.replace("_", " ").title()),
+                    "unit": info.get("unit", ""),
+                    "icon": "mdi:sensor",
+                }
 
             entities.append(
                 SolarOfThingsDeviceSensor(
