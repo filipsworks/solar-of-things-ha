@@ -678,12 +678,13 @@ class SolarOfThingsAPI:
 
         return latest_values
 
-    def fetch_latest_state(self, device_id: str) -> dict[str, Any]:
-        """Fetch the latest state (all fields) for a device."""
-        data = self._post(
-            API_LATEST_STATE,
-            {"deviceId": device_id},
-        )
+    def fetch_latest_state(self, device: str) -> dict[str, Any]:
+        """Fetch the latest state (all fields) for a device via GET."""
+        self._ensure_token_valid()
+        url = f"{API_BASE_URL}{API_LATEST_STATE}?deviceId={device}"
+        resp = self.session.get(url, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
 
         if data.get("code") not in (0, None):
             raise RuntimeError(
