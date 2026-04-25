@@ -1,3 +1,9 @@
+## [2.3.4] - 2024-05-15
+
+### Changed
+- **HACS Repository Structure**: Adjusted the repository structure to be compliant with HACS standards by moving integration files into `custom_components/solar_of_things/`. (by filipsworks)
+- `hacs.json` updated to reflect the new repository structure, removing `domains`, `zip_release`, and `filename` fields as they are no longer required. (by filipsworks)
+
 ## [2.3.3] - 2026-03-07
 
 ### Fixed
