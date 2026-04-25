@@ -20,9 +20,6 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-OUTPUT_MODES = list(OUTPUT_MODE_BY_VALUE.values())
-CHARGER_PRIORITIES = list(CHARGER_PRIORITY_BY_VALUE.values())
-
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
