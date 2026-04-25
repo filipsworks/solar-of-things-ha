@@ -93,8 +93,10 @@ from .const import (
     API_SETTINGS_GET,
     API_SETTINGS_SET,
     API_TIME_SERIES,
+    CHARGER_PRIORITY_MAP,
     IOT_APP_ID,
     IOT_APP_SECRET_ENC,
+    OUTPUT_MODE_MAP,
     TOKEN_REFRESH_LEAD_SECONDS,
 )
 from .const import (
@@ -811,50 +813,23 @@ class SolarOfThingsAPI:
         for key, value in settings.items():
             self._write_setting(device_id, key, value)
 
-    # ─── Convenience control helpers (called by select.py / switch.py) ─────────
-    # Key names are the real device attribute keys returned by get_device_settings.
-    # Output Source Priority:   USO=0, SUB=1, SBU=2
-    # Charger Source Priority:  CSO=0, SNU=1, OSO=2
-    # batteryPowerLimitingSetting: 0=OFF, 1=ON  (GRID switch)
-    # acInputRangeSetting:         0=Appliance, 1=UPS
-
-    # Operating-mode select maps HA option strings to integer values
-    _OUTPUT_MODE_MAP: dict[str, int] = {
-        "Solar First (SUB)": 0,
-        "Solar+Battery First (SBU)": 1,
-        "Solar+Battery+Grid (SUF)": 2,
-        "Power Export Control (PEC)": 3,
-    }
-    _OUTPUT_MODE_REVERSE: dict[int, str] = {v: k for k, v in _OUTPUT_MODE_MAP.items()}
-
-    # Charger-priority select
-    _CHARGER_PRIORITY_MAP: dict[str, int] = {
-        "Solar + Utility (CSO)": 0,
-        "Solar First (SNU)": 1,
-        "Solar Only (OSO)": 2,
-        "Solar residual (SOR)": 3,
-    }
-    _CHARGER_PRIORITY_REVERSE: dict[int, str] = {
-        v: k for k, v in _CHARGER_PRIORITY_MAP.items()
-    }
-
     def set_operating_mode(self, device_id: str, mode: str) -> None:
-        """Set Output Source Priority.  mode is one of _OUTPUT_MODE_MAP keys."""
-        value = self._OUTPUT_MODE_MAP.get(mode)
+        """Set Output Source Priority.  mode is one of OUTPUT_MODE_MAP keys."""
+        value = OUTPUT_MODE_MAP.get(mode)
         if value is None:
             raise ValueError(
                 f"Unknown operating mode: {mode!r}. "
-                f"Valid options: {list(self._OUTPUT_MODE_MAP)!r}"
+                f"Valid options: {list(OUTPUT_MODE_MAP)!r}"
             )
         self._write_setting(device_id, "outputSourcePrioritySetting", value)
 
     def set_battery_priority(self, device_id: str, mode: str) -> None:
-        """Set Charger Source Priority.  mode is one of _CHARGER_PRIORITY_MAP keys."""
-        value = self._CHARGER_PRIORITY_MAP.get(mode)
+        """Set Charger Source Priority.  mode is one of CHARGER_PRIORITY_MAP keys."""
+        value = CHARGER_PRIORITY_MAP.get(mode)
         if value is None:
             raise ValueError(
                 f"Unknown battery priority: {mode!r}. "
-                f"Valid options: {list(self._CHARGER_PRIORITY_MAP)!r}"
+                f"Valid options: {list(CHARGER_PRIORITY_MAP)!r}"
             )
         self._write_setting(device_id, "chargerSourcePrioritySetting", value)
 
