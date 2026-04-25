@@ -87,6 +87,7 @@ from .const import (
     API_AUTH_BASE_URL,
     API_BASE_URL,
     API_DEVICE_LIST,
+    API_LATEST_STATE,
     API_LOGIN,
     API_MONTHLY_SUMMARY,
     API_SETTINGS_GET,
