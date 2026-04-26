@@ -1,4 +1,5 @@
 """Switch platform for Solar of Things integration."""
+
 from __future__ import annotations
 
 import logging
@@ -14,7 +15,9 @@ from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
+async def async_setup_entry(
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
+) -> None:
     data = hass.data[DOMAIN][entry.entry_id]
     api = data["api"]
     station_id: str = data["station_id"]
@@ -22,22 +25,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
     entities: list[SwitchEntity] = []
 
-    for device_id, coordinator in device_coordinators.items():
-        device_name = (coordinator.device_meta or {}).get("name") or device_id
-        entities.extend(
-            [
-                SolarOfThingsGridChargingSwitch(api, coordinator, station_id, device_id, device_name),
-                SolarOfThingsGridFeedInSwitch(api, coordinator, station_id, device_id, device_name),
-                SolarOfThingsBackupModeSwitch(api, coordinator, station_id, device_id, device_name),
-            ]
-        )
-
     async_add_entities(entities)
 
 
 def _setting_value(coordinator_data: dict | None, key: str) -> int | None:
     """Extract the integer value for a device setting key from coordinator data."""
-    settings = ((coordinator_data or {}).get("settings") or {})
+    settings = (coordinator_data or {}).get("settings") or {}
     entry = settings.get(key)
     if entry is None:
         return None
@@ -49,7 +42,9 @@ def _setting_value(coordinator_data: dict | None, key: str) -> int | None:
 
 
 class _BaseSwitch(CoordinatorEntity, SwitchEntity):
-    def __init__(self, api, coordinator, station_id: str, device_id: str, device_name: str) -> None:
+    def __init__(
+        self, api, coordinator, station_id: str, device_id: str, device_name: str
+    ) -> None:
         super().__init__(coordinator)
         self._api = api
         self._station_id = station_id
@@ -62,7 +57,9 @@ class _BaseSwitch(CoordinatorEntity, SwitchEntity):
             "identifiers": {(DOMAIN, self._station_id, self._device_id)},
             "name": self._device_name,
             "manufacturer": "Siseli",
-            "model": (self.coordinator.data.get("device_meta") or {}).get("model") if self.coordinator.data else None,
+            "model": (self.coordinator.data.get("device_meta") or {}).get("model")
+            if self.coordinator.data
+            else None,
             "via_device": (DOMAIN, self._station_id),
         }
 
@@ -75,7 +72,9 @@ class SolarOfThingsGridChargingSwitch(_BaseSwitch):
     The switch reports ON when the inverter is in Appliance (grid-charging) mode.
     """
 
-    def __init__(self, api, coordinator, station_id: str, device_id: str, device_name: str) -> None:
+    def __init__(
+        self, api, coordinator, station_id: str, device_id: str, device_name: str
+    ) -> None:
         super().__init__(api, coordinator, station_id, device_id, device_name)
         self._attr_name = f"{device_name} Grid Charging (AC Input Range)"
         self._attr_unique_id = f"{DOMAIN}_{station_id}_{device_id}_grid_charging"
@@ -90,11 +89,15 @@ class SolarOfThingsGridChargingSwitch(_BaseSwitch):
         return val == 0  # 0=Appliance (charging OK), 1=UPS (bypass)
 
     async def async_turn_on(self, **kwargs):
-        await self.hass.async_add_executor_job(self._api.set_grid_charging, self._device_id, True)
+        await self.hass.async_add_executor_job(
+            self._api.set_grid_charging, self._device_id, True
+        )
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs):
-        await self.hass.async_add_executor_job(self._api.set_grid_charging, self._device_id, False)
+        await self.hass.async_add_executor_job(
+            self._api.set_grid_charging, self._device_id, False
+        )
         await self.coordinator.async_request_refresh()
 
 
@@ -105,7 +108,9 @@ class SolarOfThingsGridFeedInSwitch(_BaseSwitch):
     1 = ON  (grid switch enabled / feed-in on).
     """
 
-    def __init__(self, api, coordinator, station_id: str, device_id: str, device_name: str) -> None:
+    def __init__(
+        self, api, coordinator, station_id: str, device_id: str, device_name: str
+    ) -> None:
         super().__init__(api, coordinator, station_id, device_id, device_name)
         self._attr_name = f"{device_name} Grid Feed-In"
         self._attr_unique_id = f"{DOMAIN}_{station_id}_{device_id}_grid_feed_in"
@@ -120,11 +125,15 @@ class SolarOfThingsGridFeedInSwitch(_BaseSwitch):
         return val == 1  # 1=ON
 
     async def async_turn_on(self, **kwargs):
-        await self.hass.async_add_executor_job(self._api.set_grid_feed_in, self._device_id, True)
+        await self.hass.async_add_executor_job(
+            self._api.set_grid_feed_in, self._device_id, True
+        )
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs):
-        await self.hass.async_add_executor_job(self._api.set_grid_feed_in, self._device_id, False)
+        await self.hass.async_add_executor_job(
+            self._api.set_grid_feed_in, self._device_id, False
+        )
         await self.coordinator.async_request_refresh()
 
 
@@ -138,7 +147,9 @@ class SolarOfThingsBackupModeSwitch(_BaseSwitch):
     to 'Solar+Battery First (SBU)', which is the expected behaviour.
     """
 
-    def __init__(self, api, coordinator, station_id: str, device_id: str, device_name: str) -> None:
+    def __init__(
+        self, api, coordinator, station_id: str, device_id: str, device_name: str
+    ) -> None:
         super().__init__(api, coordinator, station_id, device_id, device_name)
         self._attr_name = f"{device_name} Backup Mode (SBU Priority)"
         self._attr_unique_id = f"{DOMAIN}_{station_id}_{device_id}_backup_mode"
@@ -153,9 +164,13 @@ class SolarOfThingsBackupModeSwitch(_BaseSwitch):
         return val == 2  # SBU
 
     async def async_turn_on(self, **kwargs):
-        await self.hass.async_add_executor_job(self._api.set_backup_mode, self._device_id, True)
+        await self.hass.async_add_executor_job(
+            self._api.set_backup_mode, self._device_id, True
+        )
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs):
-        await self.hass.async_add_executor_job(self._api.set_backup_mode, self._device_id, False)
+        await self.hass.async_add_executor_job(
+            self._api.set_backup_mode, self._device_id, False
+        )
         await self.coordinator.async_request_refresh()

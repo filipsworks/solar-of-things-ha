@@ -1,4 +1,5 @@
 """Number platform for Solar of Things integration."""
+
 from __future__ import annotations
 
 import logging
@@ -29,21 +30,13 @@ async def async_setup_entry(
 
     entities: list[NumberEntity] = []
 
-    for device_id, coordinator in device_coordinators.items():
-        device_name = (coordinator.device_meta or {}).get("name") or device_id
-        entities.extend(
-            [
-                SolarOfThingsBatteryChargeLimitNumber(api, coordinator, station_id, device_id, device_name),
-                SolarOfThingsBatteryDischargeLimitNumber(api, coordinator, station_id, device_id, device_name),
-                SolarOfThingsGridChargeLimitNumber(api, coordinator, station_id, device_id, device_name),
-            ]
-        )
-
     async_add_entities(entities)
 
 
 class _BaseNumber(CoordinatorEntity, NumberEntity):
-    def __init__(self, api, coordinator, station_id: str, device_id: str, device_name: str) -> None:
+    def __init__(
+        self, api, coordinator, station_id: str, device_id: str, device_name: str
+    ) -> None:
         super().__init__(coordinator)
         self._api = api
         self._station_id = station_id
@@ -56,7 +49,9 @@ class _BaseNumber(CoordinatorEntity, NumberEntity):
             "identifiers": {(DOMAIN, self._station_id, self._device_id)},
             "name": self._device_name,
             "manufacturer": "Siseli",
-            "model": (self.coordinator.data.get("device_meta") or {}).get("model") if self.coordinator.data else None,
+            "model": (self.coordinator.data.get("device_meta") or {}).get("model")
+            if self.coordinator.data
+            else None,
             "via_device": (DOMAIN, self._station_id),
         }
 
@@ -64,7 +59,9 @@ class _BaseNumber(CoordinatorEntity, NumberEntity):
 class SolarOfThingsBatteryChargeLimitNumber(_BaseNumber):
     _setting_key = "batteryChargeLimit"
 
-    def __init__(self, api, coordinator, station_id: str, device_id: str, device_name: str) -> None:
+    def __init__(
+        self, api, coordinator, station_id: str, device_id: str, device_name: str
+    ) -> None:
         super().__init__(api, coordinator, station_id, device_id, device_name)
         self._attr_name = f"{device_name} Battery Charge Limit"
         self._attr_unique_id = f"{DOMAIN}_{station_id}_{device_id}_battery_charge_limit"
@@ -77,20 +74,28 @@ class SolarOfThingsBatteryChargeLimitNumber(_BaseNumber):
 
     @property
     def native_value(self):
-        return ((self.coordinator.data or {}).get("settings") or {}).get(self._setting_key)
+        return ((self.coordinator.data or {}).get("settings") or {}).get(
+            self._setting_key
+        )
 
     async def async_set_native_value(self, value: float) -> None:
-        await self.hass.async_add_executor_job(self._api.set_battery_charge_limit, self._device_id, int(value))
+        await self.hass.async_add_executor_job(
+            self._api.set_battery_charge_limit, self._device_id, int(value)
+        )
         await self.coordinator.async_request_refresh()
 
 
 class SolarOfThingsBatteryDischargeLimitNumber(_BaseNumber):
     _setting_key = "batteryDischargeLimit"
 
-    def __init__(self, api, coordinator, station_id: str, device_id: str, device_name: str) -> None:
+    def __init__(
+        self, api, coordinator, station_id: str, device_id: str, device_name: str
+    ) -> None:
         super().__init__(api, coordinator, station_id, device_id, device_name)
         self._attr_name = f"{device_name} Battery Discharge Limit"
-        self._attr_unique_id = f"{DOMAIN}_{station_id}_{device_id}_battery_discharge_limit"
+        self._attr_unique_id = (
+            f"{DOMAIN}_{station_id}_{device_id}_battery_discharge_limit"
+        )
         self._attr_native_min_value = 0
         self._attr_native_max_value = 100
         self._attr_native_step = 1
@@ -100,17 +105,23 @@ class SolarOfThingsBatteryDischargeLimitNumber(_BaseNumber):
 
     @property
     def native_value(self):
-        return ((self.coordinator.data or {}).get("settings") or {}).get(self._setting_key)
+        return ((self.coordinator.data or {}).get("settings") or {}).get(
+            self._setting_key
+        )
 
     async def async_set_native_value(self, value: float) -> None:
-        await self.hass.async_add_executor_job(self._api.set_battery_discharge_limit, self._device_id, int(value))
+        await self.hass.async_add_executor_job(
+            self._api.set_battery_discharge_limit, self._device_id, int(value)
+        )
         await self.coordinator.async_request_refresh()
 
 
 class SolarOfThingsGridChargeLimitNumber(_BaseNumber):
     _setting_key = "gridChargeLimit"
 
-    def __init__(self, api, coordinator, station_id: str, device_id: str, device_name: str) -> None:
+    def __init__(
+        self, api, coordinator, station_id: str, device_id: str, device_name: str
+    ) -> None:
         super().__init__(api, coordinator, station_id, device_id, device_name)
         self._attr_name = f"{device_name} Grid Charge Limit"
         self._attr_unique_id = f"{DOMAIN}_{station_id}_{device_id}_grid_charge_limit"
@@ -124,8 +135,12 @@ class SolarOfThingsGridChargeLimitNumber(_BaseNumber):
 
     @property
     def native_value(self):
-        return ((self.coordinator.data or {}).get("settings") or {}).get(self._setting_key)
+        return ((self.coordinator.data or {}).get("settings") or {}).get(
+            self._setting_key
+        )
 
     async def async_set_native_value(self, value: float) -> None:
-        await self.hass.async_add_executor_job(self._api.set_grid_charge_limit, self._device_id, int(value))
+        await self.hass.async_add_executor_job(
+            self._api.set_grid_charge_limit, self._device_id, int(value)
+        )
         await self.coordinator.async_request_refresh()

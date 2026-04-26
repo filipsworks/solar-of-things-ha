@@ -2,60 +2,11 @@
 
 ## Overview
 
-The Solar of Things integration now supports **full control** of your solar system settings through Home Assistant. You can adjust battery limits, change operating modes, and control grid interactions directly from your dashboard or automations.
+The Solar of Things integration now supports **full control** of your solar system settings through Home Assistant. You can adjust operating modes and battery priority directly from your dashboard or automations.
 
 ---
 
 ## 🎛️ Control Entities
-
-### Number Entities (Sliders)
-
-#### 1. **Battery Charge Limit**
-- **Type**: Number (0-100%)
-- **Description**: Maximum battery charge level
-- **Use Case**: Preserve battery health by limiting charge to 90%
-- **Entity**: `number.solar_station_xxxxx_battery_charge_limit`
-
-```yaml
-# Set battery charge limit to 90%
-service: number.set_value
-target:
-  entity_id: number.solar_station_xxxxx_battery_charge_limit
-data:
-  value: 90
-```
-
-#### 2. **Battery Discharge Limit**
-- **Type**: Number (0-100%)
-- **Description**: Minimum battery level before stopping discharge
-- **Use Case**: Keep battery reserve for emergencies
-- **Entity**: `number.solar_station_xxxxx_battery_discharge_limit`
-
-```yaml
-# Don't discharge below 20%
-service: number.set_value
-target:
-  entity_id: number.solar_station_xxxxx_battery_discharge_limit
-data:
-  value: 20
-```
-
-#### 3. **Grid Charge Limit**
-- **Type**: Number (0-5000W)
-- **Description**: Maximum power to draw from grid for battery charging
-- **Use Case**: Charge from grid during off-peak hours
-- **Entity**: `number.solar_station_xxxxx_grid_charge_limit`
-
-```yaml
-# Allow 2000W grid charging
-service: number.set_value
-target:
-  entity_id: number.solar_station_xxxxx_grid_charge_limit
-data:
-  value: 2000
-```
-
----
 
 ### Select Entities (Dropdowns)
 
@@ -97,177 +48,9 @@ data:
 
 ---
 
-### Switch Entities (On/Off)
-
-#### 1. **Grid Charging**
-- **Type**: Switch
-- **Description**: Allow battery charging from grid
-- **Use Case**: Enable during cheap electricity periods
-- **Entity**: `switch.solar_station_xxxxx_grid_charging`
-
-```yaml
-# Enable grid charging
-service: switch.turn_on
-target:
-  entity_id: switch.solar_station_xxxxx_grid_charging
-```
-
-#### 2. **Grid Feed-In**
-- **Type**: Switch
-- **Description**: Allow exporting excess power to grid
-- **Use Case**: Disable when grid feed-in is not compensated
-- **Entity**: `switch.solar_station_xxxxx_grid_feed_in`
-
-```yaml
-# Disable grid export
-service: switch.turn_off
-target:
-  entity_id: switch.solar_station_xxxxx_grid_feed_in
-```
-
-#### 3. **Backup Mode**
-- **Type**: Switch
-- **Description**: Reserve battery for emergencies
-- **Use Case**: Prepare for expected power outage
-- **Entity**: `switch.solar_station_xxxxx_backup_mode`
-
-```yaml
-# Enable backup reserve
-service: switch.turn_on
-target:
-  entity_id: switch.solar_station_xxxxx_backup_mode
-```
-
----
-
 ## 🤖 Automation Examples
 
-### 1. Time-of-Use Optimization
-
-Charge from grid during cheap hours, discharge during peak hours:
-
-```yaml
-automation:
-  # Charge from grid during cheap period (midnight-6am)
-  - alias: "Solar: Charge from Grid (Off-Peak)"
-    trigger:
-      - platform: time
-        at: "00:00:00"
-    action:
-      - service: switch.turn_on
-        target:
-          entity_id: switch.solar_station_xxxxx_grid_charging
-      - service: number.set_value
-        target:
-          entity_id: number.solar_station_xxxxx_grid_charge_limit
-        data:
-          value: 3000  # 3kW charging
-
-  # Stop grid charging after cheap period
-  - alias: "Solar: Stop Grid Charging (Peak)"
-    trigger:
-      - platform: time
-        at: "06:00:00"
-    action:
-      - service: switch.turn_off
-        target:
-          entity_id: switch.solar_station_xxxxx_grid_charging
-      - service: number.set_value
-        target:
-          entity_id: number.solar_station_xxxxx_grid_charge_limit
-        data:
-          value: 0
-```
-
-### 2. Weather-Based Battery Management
-
-Adjust battery limits based on weather forecast:
-
-```yaml
-automation:
-  - alias: "Solar: Adjust for Cloudy Weather"
-    trigger:
-      - platform: state
-        entity_id: weather.home
-        attribute: condition
-        to: "cloudy"
-    action:
-      # Lower discharge limit on cloudy days
-      - service: number.set_value
-        target:
-          entity_id: number.solar_station_xxxxx_battery_discharge_limit
-        data:
-          value: 40  # Keep 40% reserve
-      
-      # Enable grid charging if needed
-      - service: switch.turn_on
-        target:
-          entity_id: switch.solar_station_xxxxx_grid_charging
-
-  - alias: "Solar: Adjust for Sunny Weather"
-    trigger:
-      - platform: state
-        entity_id: weather.home
-        attribute: condition
-        to: "sunny"
-    action:
-      # Normal discharge limit on sunny days
-      - service: number.set_value
-        target:
-          entity_id: number.solar_station_xxxxx_battery_discharge_limit
-        data:
-          value: 10
-      
-      # Disable grid charging (solar is sufficient)
-      - service: switch.turn_off
-        target:
-          entity_id: switch.solar_station_xxxxx_grid_charging
-```
-
-### 3. Emergency Backup Preparation
-
-Prepare for storms or power outages:
-
-```yaml
-automation:
-  - alias: "Solar: Storm Preparation"
-    trigger:
-      - platform: state
-        entity_id: sensor.weather_alert
-        to: "storm_warning"
-    action:
-      # Enable backup mode
-      - service: switch.turn_on
-        target:
-          entity_id: switch.solar_station_xxxxx_backup_mode
-      
-      # Set high charge limit
-      - service: number.set_value
-        target:
-          entity_id: number.solar_station_xxxxx_battery_charge_limit
-        data:
-          value: 100
-      
-      # Set high discharge limit (preserve battery)
-      - service: number.set_value
-        target:
-          entity_id: number.solar_station_xxxxx_battery_discharge_limit
-        data:
-          value: 50
-      
-      # Enable grid charging to top up
-      - service: switch.turn_on
-        target:
-          entity_id: switch.solar_station_xxxxx_grid_charging
-      
-      # Notify user
-      - service: notify.mobile_app
-        data:
-          title: "Solar System: Storm Preparation"
-          message: "Battery is being prepared for potential outage"
-```
-
-### 4. Dynamic Operating Mode
+### 1. Dynamic Operating Mode
 
 Switch modes based on electricity prices:
 
@@ -279,7 +62,7 @@ automation:
         entity_id: sensor.electricity_price
         above: 0.25  # High price threshold
     action:
-      - service: select.select_option
+      - service: select.select_action
         target:
           entity_id: select.solar_station_xxxxx_operating_mode
         data:
@@ -312,39 +95,6 @@ automation:
           option: "Solar First"
 ```
 
-### 5. Battery Health Protection
-
-Extend battery life with charge cycling:
-
-```yaml
-automation:
-  - alias: "Solar: Weekly Battery Calibration"
-    trigger:
-      - platform: time
-        at: "02:00:00"
-    condition:
-      - condition: time
-        weekday:
-          - sun  # Every Sunday
-    action:
-      # Full charge cycle
-      - service: number.set_value
-        target:
-          entity_id: number.solar_station_xxxxx_battery_charge_limit
-        data:
-          value: 100
-      
-      - delay:
-          hours: 6
-      
-      # Return to normal (90% max)
-      - service: number.set_value
-        target:
-          entity_id: number.solar_station_xxxxx_battery_charge_limit
-        data:
-          value: 90
-```
-
 ---
 
 ## 📊 Dashboard Examples
@@ -360,28 +110,6 @@ entities:
   
   - entity: select.solar_station_xxxxx_battery_priority
     name: Battery Priority
-  
-  - type: divider
-  
-  - entity: number.solar_station_xxxxx_battery_charge_limit
-    name: Charge Limit
-  
-  - entity: number.solar_station_xxxxx_battery_discharge_limit
-    name: Discharge Limit
-  
-  - entity: number.solar_station_xxxxx_grid_charge_limit
-    name: Grid Charge Power
-  
-  - type: divider
-  
-  - entity: switch.solar_station_xxxxx_grid_charging
-    name: Grid Charging
-  
-  - entity: switch.solar_station_xxxxx_grid_feed_in
-    name: Grid Feed-In
-  
-  - entity: switch.solar_station_xxxxx_backup_mode
-    name: Backup Mode
 ```
 
 ### Battery Management Card
@@ -390,7 +118,7 @@ entities:
 type: vertical-stack
 cards:
   - type: gauge
-    entity: sensor.solar_station_xxxxx_battery_state_of_charge
+    entity: sensor.solar_station_xxx_battery_state_of_charge
     name: Battery Level
     min: 0
     max: 100
@@ -404,16 +132,6 @@ cards:
         color: "#ffc107"
       - from: 80
         color: "#0f9d58"
-  
-  - type: entities
-    title: Battery Controls
-    entities:
-      - entity: number.solar_station_xxxxx_battery_charge_limit
-        name: Max Charge
-      - entity: number.solar_station_xxxxx_battery_discharge_limit
-        name: Min Discharge
-      - entity: switch.solar_station_xxxxx_backup_mode
-        name: Backup Reserve
 ```
 
 ### Quick Actions Card
@@ -431,24 +149,6 @@ cards:
         entity_id: select.solar_station_xxxxx_operating_mode
       data:
         option: "Self-Use"
-  
-  - type: button
-    name: Backup Mode
-    icon: mdi:battery-lock
-    tap_action:
-      action: call-service
-      service: switch.turn_on
-      target:
-        entity_id: switch.solar_station_xxxxx_backup_mode
-  
-  - type: button
-    name: Grid Export
-    icon: mdi:transmission-tower-export
-    tap_action:
-      action: call-service
-      service: switch.toggle
-      target:
-        entity_id: switch.solar_station_xxxxx_grid_feed_in
 ```
 
 ---
@@ -486,7 +186,6 @@ Then update `api.py` with the correct endpoints and formats.
 
 - Start with non-critical settings
 - Monitor system behavior after changes
-- Keep battery discharge limits reasonable (don't go below 10-20%)
 - Don't exceed manufacturer specifications
 - Have manual override capability
 
@@ -550,68 +249,3 @@ BATTERY_PRIORITY_MODES = [
     # Add more priorities here
 ]
 ```
-
----
-
-## 🚀 Advanced Usage
-
-### Script for Quick Mode Switching
-
-```yaml
-script:
-  solar_storm_mode:
-    alias: "Solar: Storm Mode"
-    sequence:
-      - service: switch.turn_on
-        target:
-          entity_id: switch.solar_station_xxxxx_backup_mode
-      - service: number.set_value
-        target:
-          entity_id: number.solar_station_xxxxx_battery_discharge_limit
-        data:
-          value: 50
-      - service: switch.turn_on
-        target:
-          entity_id: switch.solar_station_xxxxx_grid_charging
-      - service: notify.mobile_app
-        data:
-          message: "Solar system in storm protection mode"
-  
-  solar_normal_mode:
-    alias: "Solar: Normal Mode"
-    sequence:
-      - service: switch.turn_off
-        target:
-          entity_id: switch.solar_station_xxxxx_backup_mode
-      - service: number.set_value
-        target:
-          entity_id: number.solar_station_xxxxx_battery_discharge_limit
-        data:
-          value: 10
-      - service: select.select_option
-        target:
-          entity_id: select.solar_station_xxxxx_operating_mode
-        data:
-          option: "Self-Use"
-```
-
-### Scene Integration
-
-```yaml
-scene:
-  - name: Solar Economy Mode
-    entities:
-      select.solar_station_xxxxx_operating_mode: "Time-of-Use"
-      select.solar_station_xxxxx_battery_priority: "Grid First"
-      switch.solar_station_xxxxx_grid_feed_in: "on"
-  
-  - name: Solar Backup Mode
-    entities:
-      select.solar_station_xxxxx_operating_mode: "Backup"
-      switch.solar_station_xxxxx_backup_mode: "on"
-      number.solar_station_xxxxx_battery_discharge_limit: 50
-```
-
----
-
-**Full control of your solar system is now at your fingertips!** 🎉
