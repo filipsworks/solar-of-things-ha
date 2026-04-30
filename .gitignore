@@ -143,3 +143,6 @@ config.json
 
 # Test configuration
 test_config.json
+
+agent_instructions/
+.qwen/

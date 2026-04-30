@@ -93,10 +93,14 @@ from .const import (
     API_SETTINGS_GET,
     API_SETTINGS_SET,
     API_TIME_SERIES,
+    BATTERY_TYPE_MAP,
     CHARGER_PRIORITY_MAP,
+    GRID_CONNECTION_PROTOCOL_TYPE_MAP,
     IOT_APP_ID,
     IOT_APP_SECRET_ENC,
     OUTPUT_MODE_MAP,
+    RATED_FREQUENCY_MAP,
+    RATED_VOLTAGE_MAP,
     TOKEN_REFRESH_LEAD_SECONDS,
 )
 from .const import (
@@ -875,6 +879,163 @@ class SolarOfThingsAPI:
     def set_max_utility_charge_current(self, device_id: str, value: int) -> None:
         """Set Max Utility Charge Current (10-100 A)."""
         self._write_setting(device_id, "maximumMainsChargingCurrentSetting", value)
+
+    # ─── New setting setters ──────────────────────────────────────────────────
+
+    def set_bms_function_enable(self, device_id: str, enabled: bool) -> None:
+        """Enable/disable BMS function (0=Off, 1=On)."""
+        self._write_setting(device_id, "bmsFunctionEnableSetting", 1 if enabled else 0)
+
+    def set_bms_lock_machine_battery_capacity(self, device_id: str, value: int) -> None:
+        """Set BMS Inverter Cutoff (5-95 %)."""
+        self._write_setting(device_id, "bmsLockMachineBatteryCapacity", value)
+
+    def set_battery_constant_charging_voltage(
+        self, device_id: str, value: float
+    ) -> None:
+        """Set Bulk Voltage (24-30 V)."""
+        self._write_setting(device_id, "batteryConstantChargingVoltageSetting", value)
+
+    def set_battery_equalization_interval(self, device_id: str, value: int) -> None:
+        """Set Equalization interval (0-90 days)."""
+        self._write_setting(device_id, "batteryEqualizationIntervalSetting", value)
+
+    def set_battery_equalization_mode_enable(
+        self, device_id: str, enabled: bool
+    ) -> None:
+        """Enable/disable equalization (0=Off, 1=On)."""
+        self._write_setting(
+            device_id, "batteryEqualizationModeEnableSetting", 1 if enabled else 0
+        )
+
+    def set_battery_equalization_time(self, device_id: str, value: int) -> None:
+        """Set Equalization time (5-900 min)."""
+        self._write_setting(device_id, "batteryEqualizationTimeSetting", value)
+
+    def set_battery_equalization_timeout(self, device_id: str, value: int) -> None:
+        """Set Equalization timeout (5-900 min)."""
+        self._write_setting(device_id, "batteryEqualizationTimeoutSetting", value)
+
+    def set_battery_equalization_voltage(self, device_id: str, value: float) -> None:
+        """Set Equalization voltage (24-30 V)."""
+        self._write_setting(device_id, "batteryEqualizationVoltageSetting", value)
+
+    def set_battery_float_charging_voltage(self, device_id: str, value: float) -> None:
+        """Set Float Voltage (24-30 V)."""
+        self._write_setting(device_id, "batteryFloatChargingVoltageSetting", value)
+
+    def set_battery_recharge_voltage(self, device_id: str, value: float) -> None:
+        """Set SBU Utility Takeover voltage (22-25.5 V)."""
+        self._write_setting(device_id, "batteryRechargeVoltageSetting", value)
+
+    def set_battery_redischarge_voltage(self, device_id: str, value: float) -> None:
+        """Set SBU Battery Takeover voltage (24-29 V)."""
+        self._write_setting(device_id, "batteryRedischargeVoltageSetting", value)
+
+    def set_battery_type(self, device_id: str, mode: str) -> None:
+        """Set Battery Type.  mode is one of BATTERY_TYPE_MAP keys."""
+        value = BATTERY_TYPE_MAP.get(mode)
+        if value is None:
+            raise ValueError(
+                f"Unknown battery type: {mode!r}. "
+                f"Valid options: {list(BATTERY_TYPE_MAP)!r}"
+            )
+        self._write_setting(device_id, "batteryTypeSetting", value)
+
+    def set_ct_zero_power(self, device_id: str, value: float) -> None:
+        """Set Main input power (0.01-0.5 kW)."""
+        self._write_setting(device_id, "ctZeroPower", value)
+
+    def set_discharge_current_limit(self, device_id: str, value: int) -> None:
+        """Set Maximum Battery Discharge Current (20-200 A)."""
+        self._write_setting(device_id, "dischargeCurrentLimit", value)
+
+    def set_inverter_startup_battery_capacity(self, device_id: str, value: int) -> None:
+        """Set Battery startup SOC (5-100 %)."""
+        self._write_setting(device_id, "inverterStartupBatteryCapacity", value)
+
+    def set_low_battery_alarm_voltage(self, device_id: str, value: float) -> None:
+        """Set Battery Low Alarm voltage (20-27 V)."""
+        self._write_setting(device_id, "lowBatteryAlarmVoltageSetting", value)
+
+    def set_rated_frequency(self, device_id: str, mode: str) -> None:
+        """Set Output Frequency.  mode is one of RATED_FREQUENCY_MAP keys."""
+        value = RATED_FREQUENCY_MAP.get(mode)
+        if value is None:
+            raise ValueError(
+                f"Unknown frequency: {mode!r}. "
+                f"Valid options: {list(RATED_FREQUENCY_MAP)!r}"
+            )
+        self._write_setting(device_id, "ratedFrequencySetting", value)
+
+    def set_rated_voltage(self, device_id: str, mode: str) -> None:
+        """Set Output Voltage.  mode is one of RATED_VOLTAGE_MAP keys."""
+        value = RATED_VOLTAGE_MAP.get(mode)
+        if value is None:
+            raise ValueError(
+                f"Unknown voltage: {mode!r}. Valid options: {list(RATED_VOLTAGE_MAP)!r}"
+            )
+        self._write_setting(device_id, "ratedVoltageSetting", value)
+
+    def set_grid_connection_protocol_type(self, device_id: str, mode: str) -> None:
+        """Set Grid Connection Type.  mode is one of GRID_CONNECTION_PROTOCOL_TYPE_MAP keys."""
+        value = GRID_CONNECTION_PROTOCOL_TYPE_MAP.get(mode)
+        if value is None:
+            raise ValueError(
+                f"Unknown grid connection type: {mode!r}. "
+                f"Valid options: {list(GRID_CONNECTION_PROTOCOL_TYPE_MAP)!r}"
+            )
+        self._write_setting(device_id, "gridConnectionProtocolTypeSetting", value)
+
+    def set_restore_battery_discharging_capacity(
+        self, device_id: str, value: int
+    ) -> None:
+        """Set Battery DC Takeover capacity (5-100 %)."""
+        self._write_setting(
+            device_id, "restoreBatteryDischargingBatteryCapacity", value
+        )
+
+    def set_restore_mains_charging_capacity(self, device_id: str, value: int) -> None:
+        """Set Battery Mains Charging Takeover capacity (5-95 %)."""
+        self._write_setting(device_id, "restoreMainsChargingBatteryCapacity", value)
+
+    def set_backlight_on(self, device_id: str, enabled: bool) -> None:
+        """Enable/disable LCD backlight (0=Disable, 1=Enable)."""
+        self._write_setting(device_id, "backlightOn", 1 if enabled else 0)
+
+    def set_buzzer_on(self, device_id: str, enabled: bool) -> None:
+        """Enable/disable buzzer (0=Disable, 1=Enable)."""
+        self._write_setting(device_id, "buzzerOn", 1 if enabled else 0)
+
+    def set_display_auto_homepage(self, device_id: str, enabled: bool) -> None:
+        """Enable/disable LCD auto return to homepage (0=Disable, 1=Enable)."""
+        self._write_setting(
+            device_id, "displayAutomaticallyReturnsToHomepage", 1 if enabled else 0
+        )
+
+    def set_eco_mode(self, device_id: str, enabled: bool) -> None:
+        """Enable/disable ECO mode (0=Disable, 1=Enable)."""
+        self._write_setting(device_id, "ecoMode", 1 if enabled else 0)
+
+    def set_input_source_beep(self, device_id: str, enabled: bool) -> None:
+        """Enable/disable input source change beep (0=Disable, 1=Enable)."""
+        self._write_setting(
+            device_id, "inputSourceDetectionPromptSound", 1 if enabled else 0
+        )
+
+    def set_overheat_restart(self, device_id: str, enabled: bool) -> None:
+        """Enable/disable overheat restart (0=Disable, 1=Enable)."""
+        self._write_setting(
+            device_id, "overTemperatureAutomaticRestart", 1 if enabled else 0
+        )
+
+    def set_overload_bypass(self, device_id: str, enabled: bool) -> None:
+        """Enable/disable overload bypass (0=Disable, 1=Enable)."""
+        self._write_setting(device_id, "overloadToBypassOperation", 1 if enabled else 0)
+
+    def set_toggle_setting(self, device_id: str, key: str, enabled: bool) -> None:
+        """Generic setter for toggle settings (writes 0 or 1)."""
+        self._write_setting(device_id, key, 1 if enabled else 0)
 
     def test_connection(self, station_id: str) -> bool:
         """Return True if we can reach the device-list endpoint successfully."""

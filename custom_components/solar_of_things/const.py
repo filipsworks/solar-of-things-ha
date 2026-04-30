@@ -171,3 +171,243 @@ CHARGER_PRIORITY_MAP: dict[str, int] = {
 CHARGER_PRIORITY_REVERSE: dict[int, str] = {
     v: k for k, v in CHARGER_PRIORITY_MAP.items()
 }
+
+# ─── Battery Type select map ──────────────────────────────────────────────────
+BATTERY_TYPE_MAP: dict[str, int] = {
+    "AGM": 0,
+    "FLD": 1,
+    "USE": 2,
+    "LIA": 3,
+    "PYL": 4,
+    "TQF": 5,
+    "GRO": 6,
+    "LIB": 7,
+    "LIC": 8,
+    "FEL": 9,
+}
+BATTERY_TYPE_REVERSE: dict[int, str] = {v: k for k, v in BATTERY_TYPE_MAP.items()}
+
+# ─── Output Frequency select map ──────────────────────────────────────────────
+RATED_FREQUENCY_MAP: dict[str, int] = {
+    "50 Hz": 50,
+    "60 Hz": 60,
+}
+RATED_FREQUENCY_REVERSE: dict[int, str] = {v: k for k, v in RATED_FREQUENCY_MAP.items()}
+
+# ─── Output Voltage select map ────────────────────────────────────────────────
+RATED_VOLTAGE_MAP: dict[str, int] = {
+    "220 V": 220,
+    "230 V": 230,
+    "240 V": 240,
+}
+RATED_VOLTAGE_REVERSE: dict[int, str] = {v: k for k, v in RATED_VOLTAGE_MAP.items()}
+
+# ─── Grid Connection Type select map ──────────────────────────────────────────
+GRID_CONNECTION_PROTOCOL_TYPE_MAP: dict[str, int] = {
+    "195.5–253 VAC 49–51 Hz": 1,
+    "184–264.5 VAC 47.5–51.5 Hz": 2,
+    "184–264.5 VAC 57–62 Hz": 3,
+    "170–264.5 VAC 47.5–53.5 Hz": 4,
+    "100–280 VAC 47.5–53.5 Hz": 5,
+}
+GRID_CONNECTION_PROTOCOL_TYPE_REVERSE: dict[int, str] = {
+    v: k for k, v in GRID_CONNECTION_PROTOCOL_TYPE_MAP.items()
+}
+
+# ─── Number setting definitions ───────────────────────────────────────────────
+# Each entry: {"key": api_key, "name": display_name, "min": ..., "max": ...,
+#              "step": ..., "unit": ..., "device_class": ..., "icon": ...}
+NUMBER_SETTING_DEFINITIONS: list[dict] = [
+    {
+        "key": "bmsLockMachineBatteryCapacity",
+        "name": "BMS Inverter Cutoff",
+        "min": 5,
+        "max": 95,
+        "step": 5,
+        "unit": "%",
+        "icon": "mdi:battery-arrow-down",
+    },
+    {
+        "key": "batteryConstantChargingVoltageSetting",
+        "name": "Bulk Voltage",
+        "min": 24,
+        "max": 30,
+        "step": 0.1,
+        "unit": "V",
+        "device_class": "voltage",
+        "icon": "mdi:battery-charging-high",
+    },
+    {
+        "key": "batteryEqualizationIntervalSetting",
+        "name": "Equalization Interval",
+        "min": 0,
+        "max": 90,
+        "step": 1,
+        "unit": "day",
+        "icon": "mdi:calendar-repeat",
+    },
+    {
+        "key": "batteryEqualizationTimeSetting",
+        "name": "Equalization Time",
+        "min": 5,
+        "max": 900,
+        "step": 5,
+        "unit": "minute",
+        "icon": "mdi:clock-outline",
+    },
+    {
+        "key": "batteryEqualizationTimeoutSetting",
+        "name": "Equalization Timeout",
+        "min": 5,
+        "max": 900,
+        "step": 5,
+        "unit": "minute",
+        "icon": "mdi:timer-outline",
+    },
+    {
+        "key": "batteryEqualizationVoltageSetting",
+        "name": "Equalization Voltage",
+        "min": 24,
+        "max": 30,
+        "step": 0.1,
+        "unit": "V",
+        "device_class": "voltage",
+        "icon": "mdi:battery-charging-high",
+    },
+    {
+        "key": "batteryFloatChargingVoltageSetting",
+        "name": "Float Voltage",
+        "min": 24,
+        "max": 30,
+        "step": 0.1,
+        "unit": "V",
+        "device_class": "voltage",
+        "icon": "mdi:battery-heart",
+    },
+    {
+        "key": "batteryRechargeVoltageSetting",
+        "name": "SBU Utility Takeover",
+        "min": 22,
+        "max": 25.5,
+        "step": 0.5,
+        "unit": "V",
+        "device_class": "voltage",
+        "icon": "mdi:transmission-tower-import",
+    },
+    {
+        "key": "batteryRedischargeVoltageSetting",
+        "name": "SBU Battery Takeover",
+        "min": 24,
+        "max": 29,
+        "step": 0.5,
+        "unit": "V",
+        "device_class": "voltage",
+        "icon": "mdi:battery-check",
+    },
+    {
+        "key": "ctZeroPower",
+        "name": "Main Input Power",
+        "min": 0.01,
+        "max": 0.5,
+        "step": 0.01,
+        "unit": "kW",
+        "icon": "mdi:home-lightning-bolt",
+    },
+    {
+        "key": "dischargeCurrentLimit",
+        "name": "Maximum Battery Discharge Current",
+        "min": 20,
+        "max": 200,
+        "step": 10,
+        "unit": "A",
+        "device_class": "current",
+        "icon": "mdi:battery-arrow-down",
+    },
+    {
+        "key": "inverterStartupBatteryCapacity",
+        "name": "Battery Startup SOC",
+        "min": 5,
+        "max": 100,
+        "step": 1,
+        "unit": "%",
+        "icon": "mdi:battery-check",
+    },
+    {
+        "key": "lowBatteryAlarmVoltageSetting",
+        "name": "Battery Low Alarm",
+        "min": 20,
+        "max": 27,
+        "step": 0.1,
+        "unit": "V",
+        "device_class": "voltage",
+        "icon": "mdi:battery-alert",
+    },
+    {
+        "key": "restoreBatteryDischargingBatteryCapacity",
+        "name": "Battery DC Takeover",
+        "min": 5,
+        "max": 100,
+        "step": 5,
+        "unit": "%",
+        "icon": "mdi:battery-charging-high",
+    },
+    {
+        "key": "restoreMainsChargingBatteryCapacity",
+        "name": "Battery Mains Charging Takeover",
+        "min": 5,
+        "max": 95,
+        "step": 5,
+        "unit": "%",
+        "icon": "mdi:battery-charging-high",
+    },
+]
+
+# ─── Toggle setting definitions ───────────────────────────────────────────────
+# Each entry: {"key": api_key, "name": display_name, "icon": ...}
+TOGGLE_SETTING_DEFINITIONS: list[dict] = [
+    {
+        "key": "bmsFunctionEnableSetting",
+        "name": "BMS Enabled",
+        "icon": "mdi:battery-lock",
+    },
+    {
+        "key": "batteryEqualizationModeEnableSetting",
+        "name": "Equalization Enabled",
+        "icon": "mdi:battery-heart-outline",
+    },
+    {
+        "key": "backlightOn",
+        "name": "LCD Backlight",
+        "icon": "mdi:lightbulb",
+    },
+    {
+        "key": "buzzerOn",
+        "name": "Buzzer",
+        "icon": "mdi:bell-alert",
+    },
+    {
+        "key": "displayAutomaticallyReturnsToHomepage",
+        "name": "LCD Auto Homepage",
+        "icon": "mdi:view-dashboard",
+    },
+    {
+        "key": "ecoMode",
+        "name": "ECO Mode",
+        "icon": "mdi:leaf",
+    },
+    {
+        "key": "inputSourceDetectionPromptSound",
+        "name": "Input Source Change Beep",
+        "icon": "mdi:volume-source",
+    },
+    {
+        "key": "overTemperatureAutomaticRestart",
+        "name": "Overheat Restart",
+        "icon": "mdi:thermometer-alert",
+    },
+    {
+        "key": "overloadToBypassOperation",
+        "name": "Overload Bypass",
+        "icon": "mdi:arrow-right-bold-hexagon-outline",
+    },
+]
