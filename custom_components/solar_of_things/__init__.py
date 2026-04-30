@@ -57,7 +57,7 @@ PLATFORMS: list[Platform] = [
     Platform.SWITCH,
 ]
 
-DEVICE_UPDATE_INTERVAL = timedelta(minutes=5)
+DEVICE_UPDATE_INTERVAL = timedelta(minutes=1)
 STATION_UPDATE_INTERVAL = timedelta(minutes=30)
 
 # Settings not returned by the cached settings endpoint; must be read individually.
@@ -279,7 +279,7 @@ class SolarOfThingsDeviceCoordinator(DataUpdateCoordinator):
                         self.api.read_device_setting, self.device_id, key
                     )
                     if value is not None:
-                        settings[key] = {"key": key, "value": value}
+                        settings[key] = value
                 except Exception:
                     _LOGGER.debug(
                         "SolarOfThings device %s: failed to read extra setting %s",

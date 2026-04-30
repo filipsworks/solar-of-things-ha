@@ -74,9 +74,11 @@ class _BaseNumber(CoordinatorEntity, NumberEntity):
 
     @property
     def native_value(self):
-        return ((self.coordinator.data or {}).get("settings") or {}).get(
-            self._setting_key
-        )
+        settings = (self.coordinator.data or {}).get("settings") or {}
+        raw = settings.get(self._setting_key)
+        if isinstance(raw, dict):
+            return raw.get("value")
+        return raw
 
 
 class SolarOfThingsMaximumTotalChargingCurrentNumber(_BaseNumber):
