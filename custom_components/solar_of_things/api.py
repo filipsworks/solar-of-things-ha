@@ -849,6 +849,14 @@ class SolarOfThingsAPI:
         value = 2 if enabled else 1  # SBU=2 (battery before grid), SUB=1
         self._write_setting(device_id, "outputSourcePrioritySetting", value)
 
+    def set_maximum_total_charging_current(self, device_id: str, value: int) -> None:
+        """Set Maximum Total Charging Current (10-120 A)."""
+        self._write_setting(device_id, "maximumChargingCurrentSetting", value)
+
+    def set_max_utility_charge_current(self, device_id: str, value: int) -> None:
+        """Set Max Utility Charge Current (10-100 A)."""
+        self._write_setting(device_id, "maximumMainsChargingCurrentSetting", value)
+
     def test_connection(self, station_id: str) -> bool:
         """Return True if we can reach the device-list endpoint successfully."""
         try:
