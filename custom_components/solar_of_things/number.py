@@ -186,7 +186,7 @@ class SolarOfThingsMaximumTotalChargingCurrentNumber(_BaseNumber):
         self._attr_native_min_value = 10
         self._attr_native_max_value = 120
         self._attr_native_step = 10
-        self._attr_native_unit_of_measurement = AMPERE
+        self._attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
         self._attr_mode = NumberMode.BOX
         self._attr_device_class = NumberDeviceClass.CURRENT
         self._attr_icon = "mdi:current-dc"
@@ -218,7 +218,7 @@ class SolarOfThingsMaxUtilityChargeCurrentNumber(_BaseNumber):
         self._attr_native_min_value = 10
         self._attr_native_max_value = 100
         self._attr_native_step = 10
-        self._attr_native_unit_of_measurement = AMPERE
+        self._attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
         self._attr_mode = NumberMode.BOX
         self._attr_device_class = NumberDeviceClass.CURRENT
         self._attr_icon = "mdi:current-ac"
