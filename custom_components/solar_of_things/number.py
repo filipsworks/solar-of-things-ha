@@ -6,7 +6,7 @@ import logging
 
 from homeassistant.components.number import NumberDeviceClass, NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, UnitOfElectricCurrent
+from homeassistant.const import UnitOfElectricCurrent
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -38,15 +38,6 @@ async def async_setup_entry(
 
         entities.extend(
             [
-                SolarOfThingsBatteryChargeLimitNumber(
-                    api, coordinator, station_id, device_id, device_name
-                ),
-                SolarOfThingsBatteryDischargeLimitNumber(
-                    api, coordinator, station_id, device_id, device_name
-                ),
-                SolarOfThingsGridChargeLimitNumber(
-                    api, coordinator, station_id, device_id, device_name
-                ),
                 SolarOfThingsMaximumTotalChargingCurrentNumber(
                     api, coordinator, station_id, device_id, device_name
                 ),
@@ -81,95 +72,11 @@ class _BaseNumber(CoordinatorEntity, NumberEntity):
             "via_device": (DOMAIN, self._station_id),
         }
 
-
-class SolarOfThingsBatteryChargeLimitNumber(_BaseNumber):
-    _setting_key = "batteryChargeLimit"
-
-    def __init__(
-        self, api, coordinator, station_id: str, device_id: str, device_name: str
-    ) -> None:
-        super().__init__(api, coordinator, station_id, device_id, device_name)
-        self._attr_name = f"{device_name} Battery Charge Limit"
-        self._attr_unique_id = f"{DOMAIN}_{station_id}_{device_id}_battery_charge_limit"
-        self._attr_native_min_value = 0
-        self._attr_native_max_value = 100
-        self._attr_native_step = 1
-        self._attr_native_unit_of_measurement = PERCENTAGE
-        self._attr_mode = NumberMode.SLIDER
-        self._attr_icon = "mdi:battery-arrow-up"
-
     @property
     def native_value(self):
         return ((self.coordinator.data or {}).get("settings") or {}).get(
             self._setting_key
         )
-
-    async def async_set_native_value(self, value: float) -> None:
-        await self.hass.async_add_executor_job(
-            self._api.set_battery_charge_limit, self._device_id, int(value)
-        )
-        await self.coordinator.async_request_refresh()
-
-
-class SolarOfThingsBatteryDischargeLimitNumber(_BaseNumber):
-    _setting_key = "batteryDischargeLimit"
-
-    def __init__(
-        self, api, coordinator, station_id: str, device_id: str, device_name: str
-    ) -> None:
-        super().__init__(api, coordinator, station_id, device_id, device_name)
-        self._attr_name = f"{device_name} Battery Discharge Limit"
-        self._attr_unique_id = (
-            f"{DOMAIN}_{station_id}_{device_id}_battery_discharge_limit"
-        )
-        self._attr_native_min_value = 0
-        self._attr_native_max_value = 100
-        self._attr_native_step = 1
-        self._attr_native_unit_of_measurement = PERCENTAGE
-        self._attr_mode = NumberMode.SLIDER
-        self._attr_icon = "mdi:battery-arrow-down"
-
-    @property
-    def native_value(self):
-        return ((self.coordinator.data or {}).get("settings") or {}).get(
-            self._setting_key
-        )
-
-    async def async_set_native_value(self, value: float) -> None:
-        await self.hass.async_add_executor_job(
-            self._api.set_battery_discharge_limit, self._device_id, int(value)
-        )
-        await self.coordinator.async_request_refresh()
-
-
-class SolarOfThingsGridChargeLimitNumber(_BaseNumber):
-    _setting_key = "gridChargeLimit"
-
-    def __init__(
-        self, api, coordinator, station_id: str, device_id: str, device_name: str
-    ) -> None:
-        super().__init__(api, coordinator, station_id, device_id, device_name)
-        self._attr_name = f"{device_name} Grid Charge Limit"
-        self._attr_unique_id = f"{DOMAIN}_{station_id}_{device_id}_grid_charge_limit"
-        self._attr_native_min_value = 0
-        self._attr_native_max_value = 5000
-        self._attr_native_step = 100
-        self._attr_native_unit_of_measurement = "W"
-        self._attr_mode = NumberMode.SLIDER
-        self._attr_device_class = NumberDeviceClass.POWER
-        self._attr_icon = "mdi:transmission-tower-import"
-
-    @property
-    def native_value(self):
-        return ((self.coordinator.data or {}).get("settings") or {}).get(
-            self._setting_key
-        )
-
-    async def async_set_native_value(self, value: float) -> None:
-        await self.hass.async_add_executor_job(
-            self._api.set_grid_charge_limit, self._device_id, int(value)
-        )
-        await self.coordinator.async_request_refresh()
 
 
 class SolarOfThingsMaximumTotalChargingCurrentNumber(_BaseNumber):
@@ -189,13 +96,7 @@ class SolarOfThingsMaximumTotalChargingCurrentNumber(_BaseNumber):
         self._attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
         self._attr_mode = NumberMode.BOX
         self._attr_device_class = NumberDeviceClass.CURRENT
-        self._attr_icon = "mdi:current-dc"
-
-    @property
-    def native_value(self):
-        return ((self.coordinator.data or {}).get("settings") or {}).get(
-            self._setting_key
-        )
+        self._attr_icon = "mdi:battery-arrow-up"
 
     async def async_set_native_value(self, value: float) -> None:
         await self.hass.async_add_executor_job(
@@ -221,13 +122,7 @@ class SolarOfThingsMaxUtilityChargeCurrentNumber(_BaseNumber):
         self._attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
         self._attr_mode = NumberMode.BOX
         self._attr_device_class = NumberDeviceClass.CURRENT
-        self._attr_icon = "mdi:current-ac"
-
-    @property
-    def native_value(self):
-        return ((self.coordinator.data or {}).get("settings") or {}).get(
-            self._setting_key
-        )
+        self._attr_icon = "mdi:transmission-tower-import"
 
     async def async_set_native_value(self, value: float) -> None:
         await self.hass.async_add_executor_job(

@@ -60,6 +60,12 @@ PLATFORMS: list[Platform] = [
 DEVICE_UPDATE_INTERVAL = timedelta(minutes=5)
 STATION_UPDATE_INTERVAL = timedelta(minutes=30)
 
+# Settings not returned by the cached settings endpoint; must be read individually.
+EXTRA_DEVICE_SETTINGS = (
+    "maximumChargingCurrentSetting",
+    "maximumMainsChargingCurrentSetting",
+)
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Entry setup / teardown
@@ -266,6 +272,20 @@ class SolarOfThingsDeviceCoordinator(DataUpdateCoordinator):
             settings = await self.hass.async_add_executor_job(
                 self.api.fetch_settings, self.device_id
             )
+            # Merge individually-read settings that the cache endpoint doesn't return.
+            for key in EXTRA_DEVICE_SETTINGS:
+                try:
+                    value = await self.hass.async_add_executor_job(
+                        self.api.read_device_setting, self.device_id, key
+                    )
+                    if value is not None:
+                        settings[key] = {"key": key, "value": value}
+                except Exception:
+                    _LOGGER.debug(
+                        "SolarOfThings device %s: failed to read extra setting %s",
+                        self.device_id,
+                        key,
+                    )
             return {
                 "time_series": time_series,
                 "latest_state": latest_state,

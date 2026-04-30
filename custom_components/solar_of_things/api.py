@@ -808,6 +808,25 @@ class SolarOfThingsAPI:
     # Alias used by the coordinator in __init__.py
     fetch_settings = get_device_settings
 
+    def read_device_setting(self, device_id: str, key: str) -> Any:
+        """Read a single device setting via the config/read endpoint.
+
+        Used for settings that are not returned by the cached settings endpoint.
+        """
+        self._ensure_token_valid()
+        url = f"{API_BASE_URL}/apis/remote/device/config/read?deviceId={device_id}"
+        payload = {"id": device_id, "key": key}
+        resp = self.session.post(url, json=payload, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get("code") not in (0, None):
+            raise RuntimeError(
+                f"Setting read error code={data.get('code')} "
+                f"message={data.get('message')} (key={key})"
+            )
+        setting_data = data.get("data") or {}
+        return setting_data.get("value")
+
     def update_device_settings(self, device_id: str, settings: dict[str, Any]) -> None:
         """Write multiple settings (one API call per key)."""
         for key, value in settings.items():
