@@ -66,6 +66,7 @@ import hmac as _hmac
 import logging
 import os
 import threading
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
@@ -771,10 +772,108 @@ class SolarOfThingsAPI:
 
         return monthly
 
-    # ─── Device settings ───────────────────────────────────────────────────────
-    # The remote config endpoints require only a plain IOT-Token header (which the
-    # session already carries) and pass deviceId as a URL query parameter rather
-    # than in the JSON body.
+    # ─── Batch device settings read ─────────────────────────────────────────────
+    # Replaces individual reads for settings not returned by the cached endpoint.
+    # Flow: POST to initiate → poll GET until isFinished=true → extract configAttributeStates
+
+    API_BATCH_READ_INIT = (
+        "/apis/remote/device/configs/read"  # POST, returns batchReadId
+    )
+    API_BATCH_READ_DETAILS = (
+        "/apis/remote/device/configs/read/details"  # GET, polling endpoint
+    )
+
+    def fetch_settings_batch(self, device_id: str) -> dict[str, Any]:
+        """Fetch all device settings via the batch read API.
+
+        This replaces individual reads for settings not returned by the cached
+        settings endpoint.  The process is:
+          1. POST to initiate a batch read → returns a batchReadId
+          2. Poll GET /read/details?batchReadId=<id> every ~5s until isFinished=true
+          3. Extract configAttributeStates as a flat {key: value} dict
+
+        Returns the same format as fetch_settings() (flat dict of setting objects).
+        """
+        # Step 1: Initiate batch read
+        self._ensure_token_valid()
+        url = f"{API_BASE_URL}{self.API_BATCH_READ_INIT}?deviceId={device_id}"
+        resp = self.session.post(url, json={}, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+
+        if data.get("code") not in (0, None):
+            raise RuntimeError(
+                f"Batch read init error code={data.get('code')} "
+                f"message={data.get('message')}"
+            )
+
+        batch_read_id = (data.get("data") or {}).get("id")
+        if not batch_read_id:
+            _LOGGER.warning(
+                "SolarOfThings device %s: batch read init returned no id, "
+                "falling back to cached settings",
+                device_id,
+            )
+            return self.fetch_settings(device_id)
+
+        # Step 2: Poll for results (with ~5 second delays between requests)
+        max_poll_attempts = 30  # ~150 seconds total timeout
+        poll_delay = 5  # seconds
+
+        for attempt in range(1, max_poll_attempts + 1):
+            time.sleep(poll_delay)
+
+            details_url = (
+                f"{API_BASE_URL}{self.API_BATCH_READ_DETAILS}"
+                f"?batchReadId={batch_read_id}"
+            )
+            resp = self.session.get(details_url, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+
+            if data.get("code") not in (0, None):
+                _LOGGER.warning(
+                    "SolarOfThings device %s: batch read poll error on attempt %d: %s",
+                    device_id,
+                    attempt,
+                    data.get("message"),
+                )
+                continue
+
+            result_data = data.get("data") or {}
+            is_finished = result_data.get("isFinished")
+
+            if is_finished:
+                # Step 3: Extract configAttributeStates
+                return self._extract_settings_from_batch(result_data)
+
+        # Timeout — fall back to cached settings
+        _LOGGER.warning(
+            "SolarOfThings device %s: batch read timed out after %d attempts, "
+            "falling back to cached settings",
+            device_id,
+            max_poll_attempts,
+        )
+        return self.fetch_settings(device_id)
+
+    def _extract_settings_from_batch(
+        self, result_data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Extract a flat settings dict from batch read response data.
+
+        The configAttributeStates has the same structure as our cached endpoint:
+          {key: {"value": ..., "unit": ..., ...}, ...}
+        """
+        states = (result_data.get("configAttributeStates") or {}).copy()
+
+        # Also merge any values from targetConfig that have {t, v} format
+        # These are settings that were resolved but not yet in configAttributeStates
+        target_config = result_data.get("targetConfig") or {}
+        for key, val in target_config.items():
+            if key not in states and isinstance(val, dict) and "v" in val:
+                states[key] = {"value": val["v"]}
+
+        return states
 
     def _write_setting(self, device_id: str, key: str, value: Any) -> None:
         """Write a single device setting key=value via the remote config write API."""
